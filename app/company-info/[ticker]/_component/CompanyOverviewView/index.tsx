@@ -106,8 +106,10 @@ export default function CompanyOverviewView() {
     },
     {
       category: "시가총액",
-      value: latestDailyPrice?.market_cap
-        || "-",
+      value:
+        typeof latestDailyPrice?.market_cap === "number"
+          ? formatCurrency(latestDailyPrice.market_cap)
+          : "-",
     },
     {
       category: "업종",
