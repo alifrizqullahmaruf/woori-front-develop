@@ -25,29 +25,29 @@ export default function TopPerformanceStock() {
 }
 
 const DUMMY_PERFORMANCE_DATA = [
-  {
-    name: "삼성전자(Test)",
-    code: "000020",
+{
+    name: "삼성전자 (Samsung Electronics)",
+    code: "005930",
     logo: LogoSaham.src,
-    returns: 23,
-    description: "언급량이 5배나 늘었어요!(YouTube•Reddit 기준)",
-    detail: "경쟁사 콘스텔레이션, 메타와 장기 계약",
+    returns: 15.3,
+    description: "최근 AI 반도체 수요 급증으로 언급량이 4배 증가했어요! (YouTube•Naver 기준)",
+    detail: "AI 서버용 HBM 메모리 공급 확대 소식으로 투자자 관심 집중",
   },
   {
-    name: "Apple(Test)",
-    code: "000020",
+    name: "LG에너지솔루션 (LG Energy Solution)",
+    code: "373220",
     logo: LogoSaham.src,
-    returns: 8,
-    description: "언급량이 2배 늘었어요!(X 기준)",
-    detail: "실적발표 호실적 및 가이던스 업데이트",
+    returns: 9.7,
+    description: "전기차 배터리 납품 확대 소식으로 언급량이 2.5배 늘었어요! (Reddit•Twitter 기준)",
+    detail: "테슬라와의 차세대 배터리 계약 체결이 주가 상승을 견인",
   },
   {
-    name: "Naver(Test)",
-    code: "000020",
+    name: "NAVER Corporation",
+    code: "035420",
     logo: LogoSaham.src,
-    returns: 4,
-    description: "언급량이 3배 늘었어요!(YouTube 기준)",
-    detail: "메타로부터 장기 프로젝트 수주",
+    returns: 6.8,
+    description: "클라우드 및 AI 사업 호조로 언급량이 3배 증가했어요! (YouTube 기준)",
+    detail: "클로바 AI 기반 서비스 매출 급증 및 일본 시장 진출 강화",
   },
 ];
 
