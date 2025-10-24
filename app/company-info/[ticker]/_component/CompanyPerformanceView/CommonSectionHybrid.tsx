@@ -85,38 +85,64 @@ export default function CommonSectionHybrid({
       return dateA.getTime() - dateB.getTime();
     });
 
+    // Hitung persentase SEBELUM slice
+    const allValues = sortedItems.map((i: any) => i.metric_value ?? 0);
+    const allPercentages = allValues.map((v, idx) => {
+      let compareIdx;
+
+      if (isComparePeriod) {
+        // YoY comparison: bandingkan dengan periode yang sama tahun lalu
+        compareIdx = periodMode === "Quarterly" ? idx - 4 : idx - 1;
+      } else {
+        // Sequential comparison: bandingkan dengan periode sebelumnya
+        compareIdx = idx - 1;
+      }
+
+      // Tidak ada data pembanding
+      if (compareIdx < 0) return "-";
+
+      const compareValue = allValues[compareIdx];
+      if (compareValue === 0) return "0%";
+
+      const change = ((v - compareValue) / Math.abs(compareValue)) * 100;
+      return `${change.toFixed(2)}%`;
+    });
+
+    // BARU slice setelah perhitungan persentase
     const recentItems = sortedItems.slice(-maxPoints);
-    const values = recentItems.map((i: any) => i.metric_value ?? 0);
+    const values = allValues.slice(-maxPoints);
+    const percentages = allPercentages.slice(-maxPoints);
 
     const labels = recentItems.map((i: any) => {
       const d = new Date(i.report_date || i.metric_date);
       return `${(d.getFullYear() % 100).toString().padStart(2, "0")}년 ${d.getMonth() + 1}월`;
     });
 
-    const percentages = values.map((v, idx) => {
-      if (idx === 0) return "0%";
-      const prev = values[idx - 1];
-      const change = prev !== 0 ? ((v - prev) / Math.abs(prev)) * 100 : 0;
-      return `${change.toFixed(2)}%`;
-    });
-
     return { values, percentages, labels };
-  }, [metricType, fundamentals, isRatioMetric, activeItem, periodMode, maxPoints]);
+  }, [
+    metricType,
+    fundamentals,
+    isRatioMetric,
+    activeItem,
+    periodMode,
+    maxPoints,
+    isComparePeriod,
+  ]);
 
-// ⬇️ GANTI blok scaleForBar lama
-const scaleForBar = useMemo(
-  () => ["Revenue", "Operating income", "Net income"].includes(metricType),
-  [metricType],
-);
-
-// ⬇️ GANTI blok barValuesScaled lama
-const barValuesScaled = useMemo(() => {
-  if (!scaleForBar) return chartData.values;
-  // 억 → 조 : bagi 10,000
-  return chartData.values.map((v) =>
-    Number.isFinite(v) ? Number((v / 1000).toFixed(1)) : 0,
+  // ⬇️ GANTI blok scaleForBar lama
+  const scaleForBar = useMemo(
+    () => ["Revenue", "Operating income", "Net income"].includes(metricType),
+    [metricType],
   );
-}, [scaleForBar, chartData.values]);
+
+  // ⬇️ GANTI blok barValuesScaled lama
+  const barValuesScaled = useMemo(() => {
+    if (!scaleForBar) return chartData.values;
+    // 억 → 조 : bagi 10,000
+    return chartData.values.map((v) =>
+      Number.isFinite(v) ? Number((v / 1000).toFixed(1)) : 0,
+    );
+  }, [scaleForBar, chartData.values]);
   const barValueSuffix = useMemo(() => {
     if (["Revenue", "Operating income", "Net income"].includes(metricType)) {
       return "조"; // tetap "조" utk pendapatan
