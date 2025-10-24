@@ -103,19 +103,20 @@ export default function CommonSectionHybrid({
     return { values, percentages, labels };
   }, [metricType, fundamentals, isRatioMetric, activeItem, periodMode, maxPoints]);
 
-  // ⬇️ HANYA untuk BarChart + metrik tertentu → scale /1000 + 1 desimal
-  const scaleForBar = useMemo(
-    () => ["revenue", "operating_income", "net_income"].includes(metricType),
-    [metricType],
-  );
+// ⬇️ GANTI blok scaleForBar lama
+const scaleForBar = useMemo(
+  () => ["Revenue", "Operating income", "Net income"].includes(metricType),
+  [metricType],
+);
 
-  const barValuesScaled = useMemo(() => {
-    if (!scaleForBar) return chartData.values;
-    // bagi 1000 dan bulatkan ke 1 desimal (angka-nya langsung dibulatkan)
-    return chartData.values.map((v) =>
-      Number.isFinite(v) ? Number((v / 1000).toFixed(1)) : 0,
-    );
-  }, [scaleForBar, chartData.values]);
+// ⬇️ GANTI blok barValuesScaled lama
+const barValuesScaled = useMemo(() => {
+  if (!scaleForBar) return chartData.values;
+  // 억 → 조 : bagi 10,000
+  return chartData.values.map((v) =>
+    Number.isFinite(v) ? Number((v / 1000).toFixed(1)) : 0,
+  );
+}, [scaleForBar, chartData.values]);
   const barValueSuffix = useMemo(() => {
     if (["Revenue", "Operating income", "Net income"].includes(metricType)) {
       return "조"; // tetap "조" utk pendapatan

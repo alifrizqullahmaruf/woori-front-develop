@@ -295,12 +295,14 @@ export class ApiService {
   //   return apiRequest(`/fundamentals/${ticker.toUpperCase()}`);
   // }
 
-  async getFundamentals(ticker: string, pageSize = 200): Promise<FundamentalsData> {
+async getFundamentals(ticker: string): Promise<FundamentalsData> {
   if (!ticker) {
     throw new Error("Ticker is required");
   }
-  return apiRequest(`/fundamentals/${ticker.toUpperCase()}?page=1&page_size=${pageSize}`);
+
+  return apiRequest(`/fundamentals/${ticker.toUpperCase()}?page=1&page_size=500`);
 }
+
 
 
   async getOwnership(ticker: string): Promise<OwnershipData> {
