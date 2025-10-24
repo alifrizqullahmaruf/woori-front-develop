@@ -7,7 +7,7 @@ import SectionHeader from "@/app/_root/component/common/SectionHeader";
 import LoadingDots from "@/app/_common/component/atoms/LoadingDots";
 
 import {
-  useAllDailyPrices2,
+  useAllDailyPrices,
   useAllCompanies,
 } from "@/app/_common/assets/hooks/useApi";
 import type {
