@@ -50,6 +50,7 @@ export default function CompanyOverviewView() {
   const dividerClass =
     "after:bg-border after:my-[18px] after:block after:h-[1px] after:w-full after:content-['']";
 
+
   // Ambil data company (assuming items[0] seperti pola API)
   const companyData = data?.company?.items?.[0];
 
@@ -106,10 +107,9 @@ export default function CompanyOverviewView() {
     },
     {
       category: "시가총액",
-      value:
-        typeof latestDailyPrice?.market_cap === "number"
-          ? formatCurrency(latestDailyPrice.market_cap)
-          : "-",
+      value: latestDailyPrice?.market_cap
+        ? formatCurrency(latestDailyPrice.market_cap)
+        : "-",
     },
     {
       category: "업종",
@@ -164,8 +164,8 @@ export default function CompanyOverviewView() {
     },
     {
       category: "유동비율",
-      value: fundamentalsMap?.current_ratio
-        ? formatPercentage(fundamentalsMap.current_ratio)
+      value: fundamentalsMap?.["Current ratio"]
+        ? formatPercentage(fundamentalsMap["Current ratio"])
         : "-",
     },
   ];
