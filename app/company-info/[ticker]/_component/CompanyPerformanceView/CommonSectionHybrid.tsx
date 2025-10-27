@@ -140,7 +140,7 @@ export default function CommonSectionHybrid({
     if (!scaleForBar) return chartData.values;
     // 억 → 조 : bagi 10,000
     return chartData.values.map((v) =>
-      Number.isFinite(v) ? Number((v / 1000).toFixed(1)) : 0,
+      Number.isFinite(v) ? Number((v / 1000000).toFixed(1)) : 0,
     );
   }, [scaleForBar, chartData.values]);
   const barValueSuffix = useMemo(() => {
