@@ -31,6 +31,11 @@ export class DailyPricesService {
     if (!ticker) throw new Error("Ticker is required");
     return apiRequest(`/daily-prices/${ticker.toUpperCase()}`);
   }
+
+  async getByTickerLatest(ticker: string): Promise<DailyPricesData> {
+    if (!ticker) throw new Error("Ticker is required");
+    return apiRequest(`/daily-prices/${ticker.toUpperCase()}/latest`);
+  }
 }
 
 export const dailyPricesService = new DailyPricesService();

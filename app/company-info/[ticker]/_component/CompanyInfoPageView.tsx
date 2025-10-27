@@ -5,7 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import { DataStateHandler } from "@/app/_common/component/molecules/DataStateHandler";
 import TabList from "@/app/_common/component/organism/TabList";
 import { useCompany } from "@/app/_common/hooks/useCompanies";
-import { useDailyPrices } from "@/app/_common/hooks/useDailyPrices";
+import { useDailyPricesLatest } from "@/app/_common/hooks/useDailyPrices";
 import {
   formatCurrency,
   formatPercentage,
@@ -23,7 +23,7 @@ export default function CompanyInfoPageView() {
   const ticker = params.ticker as string;
 
   const { data: companyData, isLoading: isLoadingCompany, error: companyError } = useCompany(ticker);
-  const { data: priceData, isLoading: isLoadingPrice, error: priceError } = useDailyPrices(ticker);
+  const { data: priceData, isLoading: isLoadingPrice, error: priceError } = useDailyPricesLatest(ticker);
 
   const isLoading = isLoadingCompany || isLoadingPrice;
   const error = companyError || priceError;

@@ -24,3 +24,15 @@ export const useDailyPrices = (
     staleTime: 5 * 60 * 1000,
     ...options,
   });
+  
+  export const useDailyPricesLatest = (
+  ticker: string,
+  options?: Omit<UseQueryOptions<DailyPricesData>, "queryKey" | "queryFn">,
+) =>
+  useQuery<DailyPricesData>({
+    queryKey: QUERY_KEYS.DAILY_PRICES(ticker),
+    queryFn: () => apiService.dailyPrices.getByTicker(ticker),
+    enabled: !!ticker,
+    staleTime: 5 * 60 * 1000,
+    ...options,
+  });

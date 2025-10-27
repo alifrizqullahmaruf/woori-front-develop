@@ -133,16 +133,34 @@ export default function CommonSectionHybrid({
     [metricType],
   );
 
+  // Determine display unit based on magnitude for Revenue/Operating income/Net income
+  // Thresholds are based on raw values assumed in 백만원 단위:
+  // - 1조 = 1,000,000 (백만원)
+  // - 1억 = 100 (백만원)
+  const barUnit = useMemo(() => {
+    if (!scaleForBar) return undefined as undefined | "조" | "억" | "만";
+    const maxAbs = Math.max(
+      0,
+      ...chartData.values.map((v) => (Number.isFinite(v) ? Math.abs(v) : 0)),
+    );
+    if (maxAbs >= 1_000_000) return "조"; // 조 단위
+    if (maxAbs >= 100) return "억"; // 억 단위
+    return "만"; // 1억 미만이면 만 단위
+  }, [scaleForBar, chartData.values]);
+
   const barValuesScaled = useMemo(() => {
     if (!scaleForBar) return chartData.values;
+    // Convert from 백만원 → target unit using a multiplier
+    const multiplier =
+      barUnit === "조" ? 1 / 1_000_000 : barUnit === "억" ? 1 / 100 : 100; // 만 단위는 x100
     return chartData.values.map((v) =>
-      Number.isFinite(v) ? Number((v / 1000000).toFixed(1)) : 0,
+      Number.isFinite(v) ? Number((v * multiplier).toFixed(1)) : 0,
     );
-  }, [scaleForBar, chartData.values]);
+  }, [scaleForBar, chartData.values, barUnit]);
 
   const barValueSuffix = useMemo(() => {
     if (["Revenue", "Operating income", "Net income"].includes(metricType)) {
-      return "조";
+      return barUnit ?? undefined;
     }
     if (["EPS"].includes(metricType)) {
       return "원";
@@ -154,7 +172,7 @@ export default function CommonSectionHybrid({
       return "";
     }
     return undefined;
-  }, [metricType]);
+  }, [metricType, barUnit]);
 
   const barValueDecimals = useMemo(() => {
     if (scaleForBar) return 1;
