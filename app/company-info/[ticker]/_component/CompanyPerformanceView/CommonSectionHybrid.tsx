@@ -2,13 +2,15 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useMemo, useState } from "react";
+import { useParams } from "next/navigation";
 import ChartFallback from "@/app/_common/component/atoms/ChartFallback";
+import { DataStateHandler } from "@/app/_common/component/molecules/DataStateHandler";
 import ComparePeriodButton from "@/app/company-info/[ticker]/_component/CompanyPerformanceView/ComparePeriodButton";
 import ContentsTab from "@/app/company-info/[ticker]/_component/CompanyPerformanceView/ContentsTab";
 import InfoButton from "@/app/company-info/[ticker]/_component/CompanyPerformanceView/InfoButton";
 import LineChart from "@/app/company-info/[ticker]/_component/CompanyPerformanceView/LineChart";
 import Selector from "@/app/company-info/[ticker]/_component/CompanyPerformanceView/Selector";
-import { FundamentalsData } from "@/app/_common/services/api";
+import { useFundamentals } from "@/app/_common/hooks/useFundamentals";
 
 const BarChart = dynamic(() => import("./BarChart"), {
   ssr: false,
@@ -18,30 +20,35 @@ const BarChart = dynamic(() => import("./BarChart"), {
 interface CommonSectionProps {
   title: string;
   tabList: string[];
-  fundamentals: FundamentalsData | null;
-  enableCompare?: boolean; // kalau kamu pakai sebelumnya, biarkan saja
-  maxPoints?: number; // how many data points to display
+  enableCompare?: boolean;
+  maxPoints?: number;
 }
 
 export default function CommonSectionHybrid({
   title,
   tabList,
-  fundamentals,
-  enableCompare = true, // bebas: default true/false sesuai kebutuhanmu
+  enableCompare = true,
   maxPoints = 6,
 }: CommonSectionProps) {
+  // ✅ Fetch data dengan hooks
+  const params = useParams();
+  const ticker = params.ticker as string;
+  
+  const { 
+    data: fundamentalsData, 
+    isLoading, 
+    error 
+  } = useFundamentals(ticker);
+
   const [isComparePeriod, toggleComparePeriod] = useHandlePeriodCompare();
   const [activeItem, changeActiveItem] = useHandleTab(tabList);
-  const [periodMode, setPeriodMode] = useState<"Quarterly" | "Annual">(
-    "Quarterly",
-  );
+  const [periodMode, setPeriodMode] = useState<"Quarterly" | "Annual">("Quarterly");
+
   const handlePeriodChange = useCallback((label: string) => {
-    // Selector emits labels: "분기" (Quarterly), "연간" (Annual)
     setPeriodMode(label === "연간" ? "Annual" : "Quarterly");
   }, []);
 
   const fieldMap: Record<string, string> = {
-    // fundamentals (sesuai metric_type di API)
     매출: "Revenue",
     영업이익: "Operating income",
     순이익: "Net income",
@@ -52,12 +59,11 @@ export default function CommonSectionHybrid({
     EPS: "EPS",
     ROE: "ROE",
     ROA: "ROA",
-    // PER di data kamu muncul sebagai "PER Quarterly"
     PER: "PER Quarterly",
     PBR: "PBR",
   };
 
-  const metricType = useMemo(() => fieldMap[activeItem], [activeItem]);
+  const metricType = useMemo(() => fieldMap[activeItem], [activeItem, fieldMap]);
 
   const isRatioMetric = useMemo(
     () => activeItem.endsWith("률") || activeItem.endsWith("율"),
@@ -68,10 +74,9 @@ export default function CommonSectionHybrid({
     const mt = metricType;
     if (!mt) return dummyBarChartDataSet;
 
-    // Only use Fundamentals API data
-    const allowedPeriods =
-      periodMode === "Annual" ? ["FY"] : ["Q1", "Q2", "Q3", "Q4"];
-    const sourceItems = fundamentals?.items?.filter(
+    // ✅ Pakai data dari hooks
+    const allowedPeriods = periodMode === "Annual" ? ["FY"] : ["Q1", "Q2", "Q3", "Q4"];
+    const sourceItems = fundamentalsData?.items?.filter(
       (i) => i.metric_type === mt && allowedPeriods.includes(i.fiscal_period),
     );
 
@@ -80,25 +85,21 @@ export default function CommonSectionHybrid({
     }
 
     const sortedItems = [...sourceItems].sort((a, b) => {
-      const dateA = new Date((a as any).report_date || (a as any).metric_date);
-      const dateB = new Date((b as any).report_date || (b as any).metric_date);
+      const dateA = new Date(a.report_date);
+      const dateB = new Date(b.report_date);
       return dateA.getTime() - dateB.getTime();
     });
 
-    // Hitung persentase SEBELUM slice
-    const allValues = sortedItems.map((i: any) => i.metric_value ?? 0);
+    const allValues = sortedItems.map((i) => i.metric_value ?? 0);
     const allPercentages = allValues.map((v, idx) => {
       let compareIdx;
 
       if (isComparePeriod) {
-        // YoY comparison: bandingkan dengan periode yang sama tahun lalu
         compareIdx = periodMode === "Quarterly" ? idx - 4 : idx - 1;
       } else {
-        // Sequential comparison: bandingkan dengan periode sebelumnya
         compareIdx = idx - 1;
       }
 
-      // Tidak ada data pembanding
       if (compareIdx < 0) return "-";
 
       const compareValue = allValues[compareIdx];
@@ -108,44 +109,40 @@ export default function CommonSectionHybrid({
       return `${change.toFixed(2)}%`;
     });
 
-    // BARU slice setelah perhitungan persentase
     const recentItems = sortedItems.slice(-maxPoints);
     const values = allValues.slice(-maxPoints);
     const percentages = allPercentages.slice(-maxPoints);
 
-    const labels = recentItems.map((i: any) => {
-      const d = new Date(i.report_date || i.metric_date);
+    const labels = recentItems.map((i) => {
+      const d = new Date(i.report_date);
       return `${(d.getFullYear() % 100).toString().padStart(2, "0")}년 ${d.getMonth() + 1}월`;
     });
 
     return { values, percentages, labels };
   }, [
     metricType,
-    fundamentals,
+    fundamentalsData,
     isRatioMetric,
-    activeItem,
     periodMode,
     maxPoints,
     isComparePeriod,
   ]);
 
-  // ⬇️ GANTI blok scaleForBar lama
   const scaleForBar = useMemo(
     () => ["Revenue", "Operating income", "Net income"].includes(metricType),
     [metricType],
   );
 
-  // ⬇️ GANTI blok barValuesScaled lama
   const barValuesScaled = useMemo(() => {
     if (!scaleForBar) return chartData.values;
-    // 억 → 조 : bagi 10,000
     return chartData.values.map((v) =>
       Number.isFinite(v) ? Number((v / 1000000).toFixed(1)) : 0,
     );
   }, [scaleForBar, chartData.values]);
+
   const barValueSuffix = useMemo(() => {
     if (["Revenue", "Operating income", "Net income"].includes(metricType)) {
-      return "조"; // tetap "조" utk pendapatan
+      return "조";
     }
     if (["EPS"].includes(metricType)) {
       return "원";
@@ -158,10 +155,12 @@ export default function CommonSectionHybrid({
     }
     return undefined;
   }, [metricType]);
+
   const barValueDecimals = useMemo(() => {
-    if (scaleForBar) return 1; // 1 desimal utk 3 metrik pendapatan (karena sudah /1000)
-    return 2; // default 2 desimal utk lainnya (EPS/ROE/ROA/PER/PBR -> "원")
+    if (scaleForBar) return 1;
+    return 2;
   }, [scaleForBar]);
+
   const isUpdateChart = enableCompare ? isComparePeriod : false;
 
   const modalMap: Record<string, typeof modalContents> = {
@@ -169,72 +168,70 @@ export default function CommonSectionHybrid({
     "재무 비율": modalContents2,
   };
   const selectedModal = modalMap[title] ?? modalContents;
+
+  // ✅ Wrap dengan DataStateHandler
   return (
-    <section className={"pt-6"}>
-      <div className={"flex items-center justify-between px-6 pb-3"}>
-        <div className={"flex items-center gap-[3px]"}>
-          <h2 className={"typo-medium font-bold"}>{title}</h2>
-          <InfoButton
-            className="bg-black text-white"
-            modalDescription={selectedModal}
-          />
+    <DataStateHandler isLoading={isLoading} error={error}>
+      <section className="pt-6">
+        <div className="flex items-center justify-between px-6 pb-3">
+          <div className="flex items-center gap-[3px]">
+            <h2 className="typo-medium font-bold">{title}</h2>
+            <InfoButton
+              className="bg-black text-white"
+              modalDescription={selectedModal}
+            />
+          </div>
+
+          <div className="flex items-center gap-[15px]">
+            {enableCompare && (
+              <ComparePeriodButton
+                isActive={isComparePeriod}
+                toggleActive={toggleComparePeriod}
+              />
+            )}
+            <Selector
+              valueSet={["분기", "연간"]}
+              value={periodMode === "Annual" ? "연간" : "분기"}
+              onChange={handlePeriodChange}
+            />
+          </div>
         </div>
 
-        <div className={"flex items-center gap-[15px]"}>
-          {enableCompare && (
-            <ComparePeriodButton
-              isActive={isComparePeriod}
-              toggleActive={toggleComparePeriod}
+        <ContentsTab
+          itemList={tabList}
+          activeItem={activeItem}
+          activateItem={changeActiveItem}
+        />
+
+        <div className="m-6 h-[212px] px-3">
+          {isRatioMetric ? (
+            <LineChart
+              rawData={chartData.values}
+              labels={chartData.labels}
+              additionalLabels={chartData.percentages}
+              isUpdateChart={isUpdateChart}
+              height={212}
+            />
+          ) : (
+            <BarChart
+              rawData={barValuesScaled}
+              labels={chartData.labels}
+              additionalLabels={chartData.percentages}
+              isUpdateChart={isUpdateChart}
+              height={212}
+              valueDecimals={barValueDecimals}
+              valueSuffix={barValueSuffix}
             />
           )}
-          <Selector
-            valueSet={["분기", "연간"]}
-            value={periodMode === "Annual" ? "연간" : "분기"}
-            onChange={handlePeriodChange}
-          />
         </div>
-      </div>
 
-      <ContentsTab
-        itemList={tabList}
-        activeItem={activeItem}
-        activateItem={changeActiveItem}
-      />
-
-      <div className={"m-6 h-[212px] px-3"}>
-        {isRatioMetric ? (
-          // LineChart TIDAK di-scale
-          <LineChart
-            rawData={chartData.values}
-            labels={chartData.labels}
-            additionalLabels={chartData.percentages}
-            isUpdateChart={isUpdateChart}
-            height={212}
-          />
-        ) : (
-          // BarChart: pakai nilai TER-SCALE hanya untuk 3 metrik itu
-          <BarChart
-            rawData={barValuesScaled}
-            labels={chartData.labels}
-            additionalLabels={chartData.percentages}
-            isUpdateChart={isUpdateChart}
-            height={212}
-            // ⬇️ tampilkan 1 desimal hanya saat scaleForBar = true
-            valueDecimals={scaleForBar ? 1 : 2}
-            valueSuffix={barValueSuffix}
-          />
-        )}
-      </div>
-
-      <hr className={"bg-divider h-2 border-none"} />
-    </section>
+        <hr className="bg-divider h-2 border-none" />
+      </section>
+    </DataStateHandler>
   );
 }
 
-// ...dummy datasets & hooks tetap...
-
-/* ------------------------------------------------- */
-
+// Dummy data & hooks tetap sama
 const dummyBarChartDataSet = {
   values: [74.0, 79.0, 75.7, 79.1],
   percentages: ["23.44%", "17.35%", "11.82%", "10.05%"],

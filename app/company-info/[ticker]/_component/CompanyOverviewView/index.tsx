@@ -1,191 +1,222 @@
+"use client";
+
 import { useParams } from "next/navigation";
-import {
-  formatWonRaw,
-  fromFinnhubMillionToWon,
-  useCompanyData,
-} from "@/app/_common/assets/hooks/useApi";
+import { useCompany } from "@/app/_common/hooks/useCompanies";
+import { useDailyPrices } from "@/app/_common/hooks/useDailyPrices";
+import { useFundamentals } from "@/app/_common/hooks/useFundamentals";
+import { useOutstandingShares } from "@/app/_common/hooks/useOutstandingShares";
 import CommonTable from "@/app/_common/component/organism/CommonTable";
 import PageViewContainer from "@/app/_common/component/templates/PageViewContainer";
 import { HELP_DESCRIPTIONS_DICTIONARY } from "@/app/_common/const";
 import { type DummyTableContents } from "@/app/company-info/[ticker]/_types";
-import LoadingDots from "@/app/_common/component/atoms/LoadingDots";
-import { formatCurrency, formatPercentage } from "@/app/_common/services/api";
+import { DataStateHandler } from "@/app/_common/component/molecules/DataStateHandler";
+import { useMemo } from "react";
+import { formatCurrency, formatPercentage } from "@/app/_common/services/format";
+import { fromFinnhubMillionToWon, formatWonRaw } from "@/app/_common/hooks/formatters";
 
 export default function CompanyOverviewView() {
+  // ✅ Fetch data dengan hooks
   const params = useParams();
   const ticker = params.ticker as string;
 
-  // API fetch menggunakan hook serupa
-  const { data, isLoading, error: queryError } = useCompanyData(ticker);
+  const {
+    data: companyData,
+    isLoading,
+    error,
+  } = useCompany(ticker);
 
-  // Handle loading
-  if (isLoading) {
-    return (
-      <PageViewContainer>
-        <div className="flex items-center justify-center py-8">
-          <LoadingDots />
-        </div>
-      </PageViewContainer>
-    );
-  }
+  const {
+    data: priceData,
+    isLoading: isLoadingPrice,
+    error: priceError,
+  } = useDailyPrices(ticker);
 
-  // Handle error
-  if (
-    queryError ||
-    data?.errors.fundamentals ||
-    data?.errors.ownership ||
-    data?.errors.company ||
-    data?.errors.dailyPrices ||
-    data?.errors.outstandingShares
-  ) {
-    return (
-      <PageViewContainer>
-        <div className="flex items-center justify-center py-8 text-red-500">
-          <div>데이터를 불러오는 중 오류가 발생했습니다.</div>
-        </div>
-      </PageViewContainer>
-    );
-  }
+  const {
+    data: fundamentalsData,
+    isLoading: isLoadingFundamentals,
+    error: fundamentalsError,
+  } = useFundamentals(ticker);
+
+  const {
+    data: outstandingData,
+    isLoading: isLoadingOutstanding,
+    error: outstandingError,
+  } = useOutstandingShares(ticker);
 
   const dividerClass =
     "after:bg-border after:my-[18px] after:block after:h-[1px] after:w-full after:content-['']";
 
+  // ✅ Process data dengan useMemo untuk optimasi
+  const company = useMemo(() => {
+    return companyData?.items?.[0];
+  }, [companyData]);
 
-  // Ambil data company (assuming items[0] seperti pola API)
-  const companyData = data?.company?.items?.[0];
+  // Latest daily price (by price_date desc)
+  const latestDailyPrice = useMemo(() => {
+    if (!priceData?.items?.length) return null;
+    const sorted = [...priceData.items].sort(
+      (a, b) => new Date(b.price_date).getTime() - new Date(a.price_date).getTime(),
+    );
+    return sorted[0];
+  }, [priceData]);
 
-  // Ambil data daily prices terbaru (assuming items[0] adalah terbaru)
-  const latestDailyPrice = data?.dailyPrices?.items?.[0];
+  // Map of latest fundamentals by metric_type, and latest meta for settlement info
+  const { fundamentalsMap, recentSettlement, fiscalMonth } = useMemo(() => {
+    const result: Record<string, number> = {};
+    if (!fundamentalsData?.items?.length) {
+      return { fundamentalsMap: result, recentSettlement: "-", fiscalMonth: "-" };
+    }
 
-  // Ambil data outstanding shares terbaru
-  const latestOutstandingShares = data?.outstandingShares?.items?.[0];
+    // For each metric_type, keep the item with the latest report_date
+    const latestByType = new Map<string, { value: number; report_date: string }>();
+    let latestReport: string | null = null;
 
-  // Process fundamentals menjadi map berdasarkan metric_type (assuming all untuk period terbaru)
-  const fundamentalsMap: { [key: string]: number } =
-    data?.fundamentals?.items?.reduce(
-      (acc: { [key: string]: number }, item) => {
-        acc[item.metric_type] = item.metric_value;
-        return acc;
-      },
-      {},
-    ) || {};
+    for (const item of fundamentalsData.items) {
+      const prev = latestByType.get(item.metric_type);
+      if (!prev || new Date(item.report_date) > new Date(prev.report_date)) {
+        latestByType.set(item.metric_type, {
+          value: item.metric_value,
+          report_date: item.report_date,
+        });
+      }
+      if (!latestReport || new Date(item.report_date) > new Date(latestReport)) {
+        latestReport = item.report_date;
+      }
+    }
 
-  // Ambil latest report_date dan fiscal info berdasarkan tanggal terbaru
-  const fundamentalsItems = data?.fundamentals?.items || [];
-  const latestFundamentalByDate = fundamentalsItems.length
-    ? fundamentalsItems.reduce((latest, item) => {
-        const ld = new Date(latest.report_date);
-        const cd = new Date(item.report_date);
-        return cd.getTime() > ld.getTime() ? item : latest;
-      }, fundamentalsItems[0])
-    : undefined;
+    latestByType.forEach((v, k) => {
+      result[k] = v.value;
+    });
 
-  const fiscalMonth = latestFundamentalByDate?.report_date
-    ? new Date(latestFundamentalByDate.report_date).getMonth() + 1 + "월"
-    : "-";
-
-  const recentSettlement = latestFundamentalByDate?.report_date
-    ? new Date(latestFundamentalByDate.report_date).toLocaleDateString(
-        "ko-KR",
-        {
+    const recentSettlement = latestReport
+      ? new Date(latestReport).toLocaleDateString("ko-KR", {
           year: "numeric",
           month: "long",
           day: "numeric",
+        })
+      : "-";
+    const fiscalMonth = latestReport
+      ? `${new Date(latestReport).getMonth() + 1}월`
+      : "-";
+
+    return { fundamentalsMap: result, recentSettlement, fiscalMonth };
+  }, [fundamentalsData]);
+
+  // Latest outstanding shares (by record_date desc)
+  const latestOutstandingShares = useMemo(() => {
+    if (!outstandingData?.items?.length) return null;
+    const sorted = [...outstandingData.items].sort(
+      (a, b) => new Date(b.record_date).getTime() - new Date(a.record_date).getTime(),
+    );
+    return sorted[0];
+  }, [outstandingData]);
+
+  // ✅ Build tableContents secara dinamis dengan useMemo
+  const tableContents1: DummyTableContents[] = useMemo(
+    () => [
+      {
+        category: "기업이름",
+        value: {
+          companyName:
+            company?.company_name_kr || company?.company_name || "-",
+          stockCode: ticker?.toUpperCase() || "-",
         },
-      )
-    : "-";
-
-  // Build tableContents secara dinamis
-  const tableContents1: DummyTableContents[] = [
-    {
-      category: "기업이름",
-      value: {
-        companyName:
-          companyData?.company_name_kr || companyData?.company_name || "-",
-        stockCode: ticker?.toUpperCase() || "-",
       },
-    },
-    {
-      category: "시가총액",
-      value: latestDailyPrice?.market_cap
-        ? formatCurrency(latestDailyPrice.market_cap)
-        : "-",
-    },
-    {
-      category: "업종",
-      value: companyData?.industry_kr || companyData?.industry || "-",
-    },
-    {
-      category: "거래소",
-      value: companyData?.exchange_kr || companyData?.exchange || "-",
-    },
-  ];
+      {
+        category: "시가총액",
+        value:
+          latestDailyPrice?.market_cap != null
+            ? formatCurrency(latestDailyPrice.market_cap)
+            : "-",
+      },
+      {
+        category: "업종",
+        value: company?.industry_kr || company?.industry || "-",
+      },
+      {
+        category: "거래소",
+        value: company?.exchange_kr || company?.exchange || "-",
+      },
+    ],
+    [company, ticker],
+  );
 
-  const tableContents2: DummyTableContents[] = [
-    {
-      category: "대표자",
-      value: companyData?.ceo_kr || companyData?.ceo || "-",
-    },
-    {
-      category: "설립일",
-      value: "-", // Tidak ada di API, fallback
-    },
-    {
-      category: "상장일",
-      value: companyData?.ipo_date
-        ? new Date(companyData.ipo_date).toLocaleDateString("ko-KR", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })
-        : "-",
-    },
-    {
-      category: "최근결산",
-      value: recentSettlement,
-    },
-    {
-      category: "결산월",
-      value: fiscalMonth,
-    },
-    {
-      category: "자본금",
-      value:
-        fundamentalsMap?.Capital !== undefined
-          ? (formatWonRaw(fromFinnhubMillionToWon(fundamentalsMap.Capital)) ??
-            "-")
+  const tableContents2: DummyTableContents[] = useMemo(
+    () => [
+      {
+        category: "대표자",
+        value: company?.ceo_kr || company?.ceo || "-",
+      },
+      {
+        category: "설립일",
+        value: "-", // Tidak ada di API
+      },
+      {
+        category: "상장일",
+        value: company?.ipo_date
+          ? new Date(company.ipo_date).toLocaleDateString("ko-KR", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })
           : "-",
-    },
-    {
-      category: "발행주식",
-      value: latestOutstandingShares?.shares_outstanding
-        ? `${latestOutstandingShares.shares_outstanding.toLocaleString()}주`
-        : "-",
-    },
-    {
-      category: "유동비율",
-      value: fundamentalsMap?.["Current ratio"]
-        ? formatPercentage(fundamentalsMap["Current ratio"])
-        : "-",
-    },
-  ];
+      },
+      {
+        category: "최근결산",
+        value: recentSettlement,
+      },
+      {
+        category: "결산월",
+        value: fiscalMonth,
+      },
+      {
+        category: "자본금",
+        value:
+          fundamentalsMap?.Capital !== undefined
+            ? formatWonRaw(
+                fromFinnhubMillionToWon(fundamentalsMap.Capital),
+              ) ?? "-"
+            : "-",
+      },
+      {
+        category: "발행주식",
+        value:
+          latestOutstandingShares?.shares_outstanding != null
+            ? `${latestOutstandingShares.shares_outstanding.toLocaleString()}주`
+            : "-",
+      },
+      {
+        category: "유동비율",
+        value:
+          fundamentalsMap?.["Current ratio"] !== undefined
+            ? formatPercentage(fundamentalsMap["Current ratio"])
+            : "-",
+      },
+    ],
+    [company, fundamentalsMap, latestOutstandingShares, recentSettlement, fiscalMonth],
+  );
 
-  // 주요매출 관련 표는 제거되었습니다.
-
+  // ✅ Wrap dengan DataStateHandler seperti CommonSectionHybrid
   return (
-    <PageViewContainer>
-      {[tableContents1, tableContents2].map((tableContents, index) => (
-        <CommonTable
-          key={`table_${index}`}
-          shouldDisplayDivider
-          tableContents={tableContents}
-          // helpTexts={HELP_DESCRIPTIONS_DICTIONARY}
-        />
-      ))}
-      <p className={`text-gray-w800 break-keep ${dividerClass}`}>
-        {companyData?.description_kr || companyData?.description || "-"}
-      </p>
-      {/* 주요매출 표 섹션 제거됨 */}
-    </PageViewContainer>
+    <DataStateHandler
+      isLoading={
+        isLoading || isLoadingPrice || isLoadingFundamentals || isLoadingOutstanding
+      }
+      error={error || priceError || fundamentalsError || outstandingError}
+    >
+      <PageViewContainer>
+        {[tableContents1, tableContents2].map((tableContents, index) => (
+          <CommonTable
+            key={`table_${index}`}
+            shouldDisplayDivider
+            tableContents={tableContents}
+            // helpTexts={HELP_DESCRIPTIONS_DICTIONARY}
+          />
+        ))}
+        <p className={`text-gray-w800 break-keep ${dividerClass}`}>
+          {company?.description_kr || company?.description || "-"}
+        </p>
+      </PageViewContainer>
+    </DataStateHandler>
   );
 }

@@ -1,7 +1,8 @@
 import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { ReactNode, useCallback, useMemo, useRef, useState } from "react";
-import { useOwnership, useCompany } from "@/app/_common/assets/hooks/useApi";
+import { useCompany } from "@/app/_common/hooks/useCompanies";
+import { useOwnership } from "@/app/_common/hooks/useOwnership";
 import ChartFallback from "@/app/_common/component/atoms/ChartFallback";
 import LoadingDots from "@/app/_common/component/atoms/LoadingDots";
 import PageViewContainer from "@/app/_common/component/templates/PageViewContainer";
