@@ -17,4 +17,5 @@ export const QUERY_KEYS = {
   DAILY_PRICES: (ticker: string) => ["dailyPrices", ticker] as const,
   OUTSTANDING_SHARES: (ticker: string) => ["outstandingShares", ticker] as const,
   DAILY_FINANCIAL_METRICS: (ticker: string) => ["dailyFinancialMetrics", ticker] as const,
+  DAILY_PRICES_LATEST: (t: string) => ["dailyPrices", "latest", t] as const,
 };

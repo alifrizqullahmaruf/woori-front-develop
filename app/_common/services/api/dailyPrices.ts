@@ -32,9 +32,21 @@ export class DailyPricesService {
     return apiRequest(`/daily-prices/${ticker.toUpperCase()}`);
   }
 
-  async getByTickerLatest(ticker: string): Promise<DailyPricesData> {
+async getByTickerLatest(ticker: string): Promise<DailyPricesData> {
     if (!ticker) throw new Error("Ticker is required");
-    return apiRequest(`/daily-prices/${ticker.toUpperCase()}/latest`);
+
+    // The endpoint returns a single DailyPricesItem object.
+    const latest: DailyPricesItem = await apiRequest(
+      `/daily-prices/${ticker.toUpperCase()}/latest`
+    );
+
+    // Normalize to your ApiResponse<T> shape
+    return {
+      page: 1,
+      page_size: 1,
+      total: 1,
+      items: [latest],
+    };
   }
 }
 
