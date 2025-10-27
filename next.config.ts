@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/v1/:path*",
-        destination: "http://15.164.100.73/api/v1/:path*", // bypass corws
+        destination: "http://20.196.144.224/api/v1/:path*", // bypass corws
       },
     ];
   },
