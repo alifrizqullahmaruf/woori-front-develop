@@ -6,8 +6,10 @@ import { useOwnership } from "@/app/_common/hooks/useOwnership";
 import ChartFallback from "@/app/_common/component/atoms/ChartFallback";
 import LoadingDots from "@/app/_common/component/atoms/LoadingDots";
 import PageViewContainer from "@/app/_common/component/templates/PageViewContainer";
+import { DataStateHandler } from "@/app/_common/component/molecules/DataStateHandler";
 import HolderRow from "@/app/company-info/[ticker]/_component/CompanyShareView/HolderRow";
 import { colorCodes } from "@/app/company-info/[ticker]/_const";
+import { OwnershipService } from "@/app/_common/services/api/ownership";
 
 const DoughnutChart = dynamic(() => import("./DoughnutChart"), {
   ssr: false,
@@ -44,39 +46,40 @@ export default function CompanyShareView() {
     companydata?.items?.[0]?.company_name ||
     "해당 기업";
 
- const mappedData = useMemo(() => {
-  if (!ownershipsdata?.items) return [];
+  const mappedData = useMemo(() => {
+    if (!ownershipsdata?.items) return [];
 
-  const holderMap = new Map<string, { name: string; share: number }>();
+    const holderMap = new Map<string, { name: string; share: number }>();
 
-  ownershipsdata.items.forEach((item) => {
-    const name = item.shareholder_name_kr?.trim() || item.shareholder_name?.trim();
-    const existing = holderMap.get(name);
+    ownershipsdata.items.forEach((item) => {
+      const name =
+        item.shareholder_name_kr?.trim() || item.shareholder_name?.trim();
+      const existing = holderMap.get(name);
 
-    if (!existing || item.ownership_percent > existing.share) {
-      holderMap.set(name, {
-        name,
-        share: Number(item.ownership_percent.toFixed(2)),
-      });
-    }
-  });
+      if (!existing || item.ownership_percent > existing.share) {
+        holderMap.set(name, {
+          name,
+          share: Number(item.ownership_percent.toFixed(2)),
+        });
+      }
+    });
 
-  const uniqueHolders = Array.from(holderMap.values());
-  const sortedHolders = [...uniqueHolders].sort((a, b) => b.share - a.share);
-  const topFive = sortedHolders.slice(0, 5);
+    const uniqueHolders = Array.from(holderMap.values());
+    const sortedHolders = [...uniqueHolders].sort((a, b) => b.share - a.share);
+    const topFive = sortedHolders.slice(0, 5);
 
-  const topFiveTotal = topFive.reduce((acc, cur) => acc + cur.share, 0);
-  const others = {
-    name: "기타",
-    share: Math.max(0, Number((100 - topFiveTotal).toFixed(2))),
-  };
-  const finalHolders = [others, ...topFive].map((item, index) => ({
-    ...item,
-    bgColor: colorCodes[index % colorCodes.length],
-  }));
+    const topFiveTotal = topFive.reduce((acc, cur) => acc + cur.share, 0);
+    const others = {
+      name: "기타",
+      share: Math.max(0, Number((100 - topFiveTotal).toFixed(2))),
+    };
+    const finalHolders = [others, ...topFive].map((item, index) => ({
+      ...item,
+      bgColor: colorCodes[index % colorCodes.length],
+    }));
 
-  return finalHolders;
-}, [ownershipsdata]);
+    return finalHolders;
+  }, [ownershipsdata]);
 
   const [filteredData, filterIndex] = useHolderFilter(mappedData);
 
@@ -86,65 +89,54 @@ export default function CompanyShareView() {
   );
 
   // const latestownershipdata = mappedData?.[0];
-
-  if (isLoading) {
-    return (
-      <PageViewContainer verticalPadding={24}>
-        <LoadingDots />
-      </PageViewContainer>
-    );
-  }
-
-  if (error || !ownershipsdata) {
-    return (
-      <PageViewContainer verticalPadding={24}>
-        <p className="text-red-500">Error loading data</p>
-      </PageViewContainer>
-    );
-  }
-
   return (
-    <PageViewContainer verticalPadding={24}>
-      <h1 className="typo-medium font-bold">
-        {companyName}의 주요 주주는
-        <br />
-        <Highlighter>
-          {topHolder?.shareholder_name_kr ||
-            topHolder?.shareholder_name ||
-            "알 수 없음"}
-        </Highlighter>
-        이며
-        <br />
-        <Highlighter>
-          {topHolder?.ownership_percent
-            ? `${topHolder.ownership_percent.toFixed(2)}%`
-            : "0%"}
-        </Highlighter>
-        의 지분을 가지고 있습니다.
-      </h1>
+    <DataStateHandler
+      isLoading={isLoading}
+      error={error}
+      isEmpty={!ownershipsdata?.items?.length}
+    >
+      <PageViewContainer verticalPadding={24}>
+        <h1 className="typo-medium font-bold">
+          {companyName}의 주요 주주는
+          <br />
+          <Highlighter>
+            {topHolder?.shareholder_name_kr ||
+              topHolder?.shareholder_name ||
+              "알 수 없음"}
+          </Highlighter>
+          이며
+          <br />
+          <Highlighter>
+            {topHolder?.ownership_percent
+              ? `${topHolder.ownership_percent.toFixed(2)}%`
+              : "0%"}
+          </Highlighter>
+          의 지분을 가지고 있습니다.
+        </h1>
 
-      <div className={"mx-auto mt-5 mb-6 size-[210px]"}>
-        <DoughnutChart
-          dataArray={filteredData.map(({ share }) => share)}
-          labels={labels}
-          colorList={filteredData.map(({ bgColor }) => bgColor)}
-        />
-      </div>
-      <table style={{ borderCollapse: "separate", borderSpacing: "0 20px" }}>
-        <tbody>
-          {mappedData.map(({ name, share }, index) => (
-            <HolderRow
-              key={`holder_${name}_${share}_${index}`}
-              filterIndex={filterIndex(name)}
-              index={index}
-              name={name}
-              share={share}
-              isActive={labels.includes(name)}
-            />
-          ))}
-        </tbody>
-      </table>
-    </PageViewContainer>
+        <div className={"mx-auto mt-5 mb-6 size-[210px]"}>
+          <DoughnutChart
+            dataArray={filteredData.map(({ share }) => share)}
+            labels={labels}
+            colorList={filteredData.map(({ bgColor }) => bgColor)}
+          />
+        </div>
+        <table style={{ borderCollapse: "separate", borderSpacing: "0 20px" }}>
+          <tbody>
+            {mappedData.map(({ name, share }, index) => (
+              <HolderRow
+                key={`holder_${name}_${share}_${index}`}
+                filterIndex={filterIndex(name)}
+                index={index}
+                name={name}
+                share={share}
+                isActive={labels.includes(name)}
+              />
+            ))}
+          </tbody>
+        </table>
+      </PageViewContainer>
+    </DataStateHandler>
   );
 }
 

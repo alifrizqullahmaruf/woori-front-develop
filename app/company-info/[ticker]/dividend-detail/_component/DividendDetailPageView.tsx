@@ -15,7 +15,6 @@ import InfoButton from "@/app/company-info/[ticker]/_component/CompanyPerformanc
 import TableContainer from "@/app/company-info/[ticker]/dividend-detail/_component/TableContainer";
 
 export default function DividendDetailPageView() {
-  // ✅ Fetch data dengan hooks
   const params = useParams();
   const ticker = params.ticker as string;
 

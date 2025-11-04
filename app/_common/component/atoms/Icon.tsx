@@ -3,7 +3,9 @@ import BackSVG from "@/app/_common/assets/icons/Back.svg";
 import CheckSVG from "@/app/_common/assets/icons/Check.svg";
 import CloseSVG from "@/app/_common/assets/icons/Close.svg";
 import DetailSVG from "@/app/_common/assets/icons/Detail.svg";
+import EmptySVG from "@/app/_common/assets/icons/Empty.svg"
 import InfoSVG from "@/app/_common/assets/icons/Info.svg";
+import NotFoundSVG from "@/app/_common/assets/icons/NotFound.svg"
 import TrendingUpSVG from "@/app/_common/assets/icons/Trendingup.svg";
 import LaurenLogoSVG from "@/app/_common/assets/logo/lauren_logo.svg";
 import LaurenLogoAltSVG from "@/app/_common/assets/logo/lauren_logo_alt.svg";
@@ -43,4 +45,12 @@ export const LaurenLogoAlt = (props: IconProps) => {
 
 export const TrendingUp = (props: IconProps) => {
   return <TrendingUpSVG {...props} />;
+};
+
+export const Empty = (props: IconProps) => {
+  return <EmptySVG {...props} />;
+};
+
+export const NotFound = (props: IconProps) => {
+  return <NotFoundSVG {...props} />;
 };

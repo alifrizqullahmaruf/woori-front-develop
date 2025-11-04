@@ -30,19 +30,16 @@ export default function CommonSectionHybrid({
   enableCompare = true,
   maxPoints = 6,
 }: CommonSectionProps) {
-  // ✅ Fetch data dengan hooks
   const params = useParams();
   const ticker = params.ticker as string;
-  
-  const { 
-    data: fundamentalsData, 
-    isLoading, 
-    error 
-  } = useFundamentals(ticker);
+
+  const { data: fundamentalsData, isLoading, error } = useFundamentals(ticker);
 
   const [isComparePeriod, toggleComparePeriod] = useHandlePeriodCompare();
   const [activeItem, changeActiveItem] = useHandleTab(tabList);
-  const [periodMode, setPeriodMode] = useState<"Quarterly" | "Annual">("Quarterly");
+  const [periodMode, setPeriodMode] = useState<"Quarterly" | "Annual">(
+    "Quarterly",
+  );
 
   const handlePeriodChange = useCallback((label: string) => {
     setPeriodMode(label === "연간" ? "Annual" : "Quarterly");
@@ -63,7 +60,10 @@ export default function CommonSectionHybrid({
     PBR: "PBR",
   };
 
-  const metricType = useMemo(() => fieldMap[activeItem], [activeItem, fieldMap]);
+  const metricType = useMemo(
+    () => fieldMap[activeItem],
+    [activeItem, fieldMap],
+  );
 
   const isRatioMetric = useMemo(
     () => activeItem.endsWith("률") || activeItem.endsWith("율"),
@@ -75,7 +75,8 @@ export default function CommonSectionHybrid({
     if (!mt) return dummyBarChartDataSet;
 
     // ✅ Pakai data dari hooks
-    const allowedPeriods = periodMode === "Annual" ? ["FY"] : ["Q1", "Q2", "Q3", "Q4"];
+    const allowedPeriods =
+      periodMode === "Annual" ? ["FY"] : ["Q1", "Q2", "Q3", "Q4"];
     const sourceItems = fundamentalsData?.items?.filter(
       (i) => i.metric_type === mt && allowedPeriods.includes(i.fiscal_period),
     );
@@ -187,69 +188,66 @@ export default function CommonSectionHybrid({
   };
   const selectedModal = modalMap[title] ?? modalContents;
 
-  // ✅ Wrap dengan DataStateHandler
   return (
-    <DataStateHandler isLoading={isLoading} error={error}>
-      <section className="pt-6">
-        <div className="flex items-center justify-between px-6 pb-3">
-          <div className="flex items-center gap-[3px]">
-            <h2 className="typo-medium font-bold">{title}</h2>
-            <InfoButton
-              className="bg-black text-white"
-              modalDescription={selectedModal}
-            />
-          </div>
-
-          <div className="flex items-center gap-[15px]">
-            {enableCompare && (
-              <ComparePeriodButton
-                isActive={isComparePeriod}
-                toggleActive={toggleComparePeriod}
-              />
-            )}
-            <Selector
-              valueSet={["분기", "연간"]}
-              value={periodMode === "Annual" ? "연간" : "분기"}
-              onChange={handlePeriodChange}
-            />
-          </div>
+    <section className="pt-6">
+      <div className="flex items-center justify-between px-6 pb-3">
+        <div className="flex items-center gap-[3px]">
+          <h2 className="typo-medium font-bold">{title}</h2>
+          <InfoButton
+            className="bg-black text-white"
+            modalDescription={selectedModal}
+          />
         </div>
 
-        <ContentsTab
-          itemList={tabList}
-          activeItem={activeItem}
-          activateItem={changeActiveItem}
-        />
-
-        <div className="m-6 h-[212px] px-3">
-          {isRatioMetric ? (
-            <LineChart
-              rawData={chartData.values}
-              labels={chartData.labels}
-              additionalLabels={chartData.percentages}
-              isUpdateChart={isUpdateChart}
-              height={212}
-            />
-          ) : (
-            <BarChart
-              rawData={barValuesScaled}
-              labels={chartData.labels}
-              additionalLabels={chartData.percentages}
-              isUpdateChart={isUpdateChart}
-              height={212}
-              valueDecimals={barValueDecimals}
-              valueSuffix={barValueSuffix}
+        <div className="flex items-center gap-[15px]">
+          {enableCompare && (
+            <ComparePeriodButton
+              isActive={isComparePeriod}
+              toggleActive={toggleComparePeriod}
             />
           )}
+          <Selector
+            valueSet={["분기", "연간"]}
+            value={periodMode === "Annual" ? "연간" : "분기"}
+            onChange={handlePeriodChange}
+          />
         </div>
+      </div>
 
-        <hr className="bg-divider h-2 border-none" />
-      </section>
-    </DataStateHandler>
+      <ContentsTab
+        itemList={tabList}
+        activeItem={activeItem}
+        activateItem={changeActiveItem}
+      />
+
+      <div className="m-6 h-[212px] px-3">
+        {isRatioMetric ? (
+          <LineChart
+            rawData={chartData.values}
+            labels={chartData.labels}
+            additionalLabels={chartData.percentages}
+            isUpdateChart={isUpdateChart}
+            height={212}
+          />
+        ) : (
+          <BarChart
+            rawData={barValuesScaled}
+            labels={chartData.labels}
+            additionalLabels={chartData.percentages}
+            isUpdateChart={isUpdateChart}
+            height={212}
+            valueDecimals={barValueDecimals}
+            valueSuffix={barValueSuffix}
+          />
+        )}
+      </div>
+
+      <hr className="bg-divider h-2 border-none" />
+    </section>
   );
 }
 
-// Dummy data & hooks tetap sama
+// Dummy data & hooks still same
 const dummyBarChartDataSet = {
   values: [74.0, 79.0, 75.7, 79.1],
   percentages: ["23.44%", "17.35%", "11.82%", "10.05%"],

@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { ReactNode, useCallback } from "react";
 import { Back, LaurenLogo } from "@/app/_common/component/atoms/Icon";
 import Footer from "@/app/_global/component/Footer";
+import { usePageMeta } from "@/app/_global/providers/PageMetaProvider";
 
 interface BasicUIProps {
   children?: ReactNode;
@@ -16,7 +17,16 @@ export default function BasicUI({
 }: Readonly<BasicUIProps>) {
   const [pageDepth, pathname] = useCalculatePathDepth();
 
-  const shouldHideFooter = hideFooter || pathname.includes("/company-info/");
+  const { hideFooter: hideFooterFromContext } = usePageMeta();
+
+  // Hide footer when:
+  // - explicit prop requests it
+  // - context (set by error.tsx or not-found.tsx) requests it
+  // - certain sections (business rule) should not show footer
+  const shouldHideFooter =
+    hideFooter ||
+    hideFooterFromContext ||
+    pathname.includes("/company-info/");
 
   
   const handleBackButtonClick = useCallback(() => {
@@ -59,7 +69,6 @@ export default function BasicUI({
         </div>
       </nav>
       {children}
-      {/* <Footer /> */}
       {!shouldHideFooter && <Footer />}
     </main>
   );

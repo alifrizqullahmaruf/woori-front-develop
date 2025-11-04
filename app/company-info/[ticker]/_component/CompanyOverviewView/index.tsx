@@ -11,19 +11,21 @@ import { HELP_DESCRIPTIONS_DICTIONARY } from "@/app/_common/const";
 import { type DummyTableContents } from "@/app/company-info/[ticker]/_types";
 import { DataStateHandler } from "@/app/_common/component/molecules/DataStateHandler";
 import { useMemo } from "react";
-import { formatCurrency, formatPercentage } from "@/app/_common/services/format";
-import { fromFinnhubMillionToWon, formatWonRaw } from "@/app/_common/hooks/formatters";
+import {
+  formatCurrency,
+  formatPercentage,
+} from "@/app/_common/services/format";
+import {
+  fromFinnhubMillionToWon,
+  formatWonRaw,
+} from "@/app/_common/hooks/formatters";
 
 export default function CompanyOverviewView() {
-  // ✅ Fetch data dengan hooks
+  //Fetch data using custom hooks
   const params = useParams();
   const ticker = params.ticker as string;
 
-  const {
-    data: companyData,
-    isLoading,
-    error,
-  } = useCompany(ticker);
+  const { data: companyData, isLoading, error } = useCompany(ticker);
 
   const {
     data: priceData,
@@ -46,29 +48,37 @@ export default function CompanyOverviewView() {
   const dividerClass =
     "after:bg-border after:my-[18px] after:block after:h-[1px] after:w-full after:content-['']";
 
-  // ✅ Process data dengan useMemo untuk optimasi
+  //Process data with useMemo for optimization
   const company = useMemo(() => {
     return companyData?.items?.[0];
   }, [companyData]);
 
-  // Latest daily price (by price_date desc)
+  // Get the latest daily price (sorted by price_date desc)
   const latestDailyPrice = useMemo(() => {
     if (!priceData?.items?.length) return null;
     const sorted = [...priceData.items].sort(
-      (a, b) => new Date(b.price_date).getTime() - new Date(a.price_date).getTime(),
+      (a, b) =>
+        new Date(b.price_date).getTime() - new Date(a.price_date).getTime(),
     );
     return sorted[0];
   }, [priceData]);
 
-  // Map of latest fundamentals by metric_type, and latest meta for settlement info
+  // Map the latest fundamentals by metric_type, and get the latest settlement info
   const { fundamentalsMap, recentSettlement, fiscalMonth } = useMemo(() => {
     const result: Record<string, number> = {};
     if (!fundamentalsData?.items?.length) {
-      return { fundamentalsMap: result, recentSettlement: "-", fiscalMonth: "-" };
+      return {
+        fundamentalsMap: result,
+        recentSettlement: "-",
+        fiscalMonth: "-",
+      };
     }
 
-    // For each metric_type, keep the item with the latest report_date
-    const latestByType = new Map<string, { value: number; report_date: string }>();
+    // For each metric_type, keep the item with the most recent report_date
+    const latestByType = new Map<
+      string,
+      { value: number; report_date: string }
+    >();
     let latestReport: string | null = null;
 
     for (const item of fundamentalsData.items) {
@@ -79,7 +89,10 @@ export default function CompanyOverviewView() {
           report_date: item.report_date,
         });
       }
-      if (!latestReport || new Date(item.report_date) > new Date(latestReport)) {
+      if (
+        !latestReport ||
+        new Date(item.report_date) > new Date(latestReport)
+      ) {
         latestReport = item.report_date;
       }
     }
@@ -102,23 +115,23 @@ export default function CompanyOverviewView() {
     return { fundamentalsMap: result, recentSettlement, fiscalMonth };
   }, [fundamentalsData]);
 
-  // Latest outstanding shares (by record_date desc)
+  // Get the latest outstanding shares (sorted by record_date desc)
   const latestOutstandingShares = useMemo(() => {
     if (!outstandingData?.items?.length) return null;
     const sorted = [...outstandingData.items].sort(
-      (a, b) => new Date(b.record_date).getTime() - new Date(a.record_date).getTime(),
+      (a, b) =>
+        new Date(b.record_date).getTime() - new Date(a.record_date).getTime(),
     );
     return sorted[0];
   }, [outstandingData]);
 
-  // ✅ Build tableContents secara dinamis dengan useMemo
+  //Dynamically build tableContents using useMemo
   const tableContents1: DummyTableContents[] = useMemo(
     () => [
       {
         category: "기업이름",
         value: {
-          companyName:
-            company?.company_name_kr || company?.company_name || "-",
+          companyName: company?.company_name_kr || company?.company_name || "-",
           stockCode: ticker?.toUpperCase() || "-",
         },
       },
@@ -149,7 +162,7 @@ export default function CompanyOverviewView() {
       },
       {
         category: "설립일",
-        value: "-", // Tidak ada di API
+        value: "-", // Not available in API
       },
       {
         category: "상장일",
@@ -173,9 +186,8 @@ export default function CompanyOverviewView() {
         category: "자본금",
         value:
           fundamentalsMap?.Capital !== undefined
-            ? formatWonRaw(
-                fromFinnhubMillionToWon(fundamentalsMap.Capital),
-              ) ?? "-"
+            ? (formatWonRaw(fromFinnhubMillionToWon(fundamentalsMap.Capital)) ??
+              "-")
             : "-",
       },
       {
@@ -193,16 +205,29 @@ export default function CompanyOverviewView() {
             : "-",
       },
     ],
-    [company, fundamentalsMap, latestOutstandingShares, recentSettlement, fiscalMonth],
+    [
+      company,
+      fundamentalsMap,
+      latestOutstandingShares,
+      recentSettlement,
+      fiscalMonth,
+    ],
   );
 
-  // ✅ Wrap dengan DataStateHandler seperti CommonSectionHybrid
   return (
     <DataStateHandler
       isLoading={
-        isLoading || isLoadingPrice || isLoadingFundamentals || isLoadingOutstanding
+        isLoading ||
+        isLoadingPrice ||
+        isLoadingFundamentals ||
+        isLoadingOutstanding
       }
       error={error || priceError || fundamentalsError || outstandingError}
+      isEmpty={
+        !priceData?.items?.length &&
+        !fundamentalsData?.items?.length &&
+        !outstandingData?.items?.length
+      }
     >
       <PageViewContainer>
         {[tableContents1, tableContents2].map((tableContents, index) => (

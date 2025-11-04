@@ -49,27 +49,42 @@ interface TopPerformanceThemeItemProps {
   logo?: string;
 }
 
-function TopPerformanceThemeItem({ name, returns, colorCode, logo }: TopPerformanceThemeItemProps) {
+function TopPerformanceThemeItem({
+  name,
+  returns,
+  colorCode,
+  logo,
+}: TopPerformanceThemeItemProps) {
   const isPositive = returns > 0;
 
   return (
     <CardFrame className={"flex items-center"}>
       <div className="relative mr-[9px] flex size-9 items-center justify-center overflow-hidden rounded-full">
         {logo ? (
-          <Image src={logo} alt={`${name} logo`} fill sizes="36px" className="object-contain p-1.5" />
+          <Image
+            src={logo}
+            alt={`${name} logo`}
+            fill
+            sizes="36px"
+            className="object-contain p-1.5"
+          />
         ) : (
           <div
             className="typo-micro relative size-9 rounded-full font-bold"
             style={{ backgroundColor: colorCode.bg, color: colorCode.text }}
           >
-            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">{name[0]}</span>
+            <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+              {name[0]}
+            </span>
           </div>
         )}
       </div>
 
       <div className={"flex flex-1 items-center justify-between"}>
         <h3 className={"typo-small font-medium"}>{name}</h3>
-        <div className={`${isPositive ? "text-accent-red" : "text-primary-750"} font-family-numbers font-bold`}>
+        <div
+          className={`${isPositive ? "text-accent-red" : "text-primary-750"} font-family-numbers font-bold`}
+        >
           {isPositive ? "+" : ""}
           {returns}%
         </div>

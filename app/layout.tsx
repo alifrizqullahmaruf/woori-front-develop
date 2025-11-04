@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { Noto_Sans_KR } from "next/font/google";
-import "@/app/_global/styles/globals.css";
 import { ReactNode } from "react";
+import "@/app/_global/styles/globals.css";
 import BasicUI from "@/app/_global/component/BasicUI";
 import { ModalProvider } from "@/app/_global/providers/ModalProvider";
 import QueryProvider from "./_global/providers/QueryProvider";
+import { PageMetaProvider } from "@/app/_global/providers/PageMetaProvider";
 
 const notoSansKR = Noto_Sans_KR({
   subsets: ["latin"],
@@ -31,7 +32,9 @@ export default function RootLayout({
       <body className={`${notoSansKR.className} bg-neutral-500 antialiased`}>
         <QueryProvider>
           <ModalProvider>
-            <BasicUI>{children}</BasicUI>
+            <PageMetaProvider>
+              <BasicUI>{children}</BasicUI>
+            </PageMetaProvider>
           </ModalProvider>
           <div id={"modal-root"} />
         </QueryProvider>

@@ -25,7 +25,7 @@ export default function CompanyPerformanceView() {
   const { data: fundamentalsData, isLoading, error } = useFundamentals(ticker);
 
   return (
-    <DataStateHandler isLoading={isLoading} error={error}>
+    <DataStateHandler isLoading={isLoading} error={error} isEmpty={!fundamentalsData?.items?.length}>
       <article className="flex flex-1 flex-col">
         <CommonSectionHybrid
           enableCompare={true}

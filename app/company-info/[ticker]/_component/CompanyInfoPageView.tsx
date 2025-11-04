@@ -1,10 +1,11 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DataStateHandler } from "@/app/_common/component/molecules/DataStateHandler";
 import TabList from "@/app/_common/component/organism/TabList";
-import { useCompany } from "@/app/_common/hooks/useCompanies";
+import { CompanySearch } from "@/app/_common/component/molecules/CompanySearch";
+import { useAllCompanies, useCompany } from "@/app/_common/hooks/useCompanies";
 import { useDailyPricesLatest } from "@/app/_common/hooks/useDailyPrices";
 import {
   formatCurrency,
@@ -18,15 +19,28 @@ import CompanyPerformanceView from "@/app/company-info/[ticker]/_component/Compa
 import CompanyShareView from "@/app/company-info/[ticker]/_component/CompanyShareView";
 
 export default function CompanyInfoPageView() {
+  const router = useRouter();
   const [view, changeMenu, currentMenu] = useCompanyInfoTab();
-  const params = useParams();
-  const ticker = params.ticker as string;
+  
+  // Read URL params with explicit typing and runtime-safe normalization.
+  const { ticker: paramTicker } = useParams<{ ticker?: string | string[] }>();
+  const ticker = useMemo(() => {
+    if (typeof paramTicker === "string") return paramTicker;
+    if (Array.isArray(paramTicker) && typeof paramTicker[0] === "string") return paramTicker[0];
+    return "";
+  }, [paramTicker]);
+
+  // If ticker is missing or invalid, surface a clear error via DataStateHandler.
+  const paramsError = useMemo(() => {
+    return ticker ? null : new Error("Invalid or missing ticker URL parameter.");
+  }, [ticker]);
 
   const { data: companyData, isLoading: isLoadingCompany, error: companyError } = useCompany(ticker);
   const { data: priceData, isLoading: isLoadingPrice, error: priceError } = useDailyPricesLatest(ticker);
+  const { data: allCompanies, isLoading: isLoadingCompanies } = useAllCompanies();
 
   const isLoading = isLoadingCompany || isLoadingPrice;
-  const error = companyError || priceError;
+  const error = paramsError || companyError || priceError;
 
   const { formattedPrice, formattedChange, priceColor, companyName, currencySymbol } = useMemo(() => {
     if (!priceData?.items?.length) {
@@ -69,7 +83,19 @@ export default function CompanyInfoPageView() {
   return (
     <DataStateHandler isLoading={isLoading} error={error}>
       <article className="flex flex-1 flex-col pb-[52px]">
-        <header className="p-6 pt-1">
+        {/* Full-width search at top */}
+        <div className="px-6 pt-4">
+          <CompanySearch
+            companies={allCompanies?.items || []}
+            isLoading={isLoadingCompanies}
+            onSelect={(selectedTicker) => {
+              router.push(`/company-info/${selectedTicker}`);
+            }}
+            placeholder="종목 검색"
+          />
+        </div>
+        
+        <header className="relative p-6 pt-3">
           <h1 className="typo-large font-medium">
             {companyName}
             <div className="typo-num-large flex items-center gap-2.5 font-black">
@@ -80,9 +106,11 @@ export default function CompanyInfoPageView() {
             </div>
           </h1>
         </header>
+        
         <nav>
           <TabList tabDataList={menuList} onClickAction={changeMenu} />
         </nav>
+        
         {view}
         {currentMenu === "dividend" && <hr className="bg-divider mt-1.5 h-6 border-none" />}
       </article>

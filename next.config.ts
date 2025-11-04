@@ -4,8 +4,7 @@ const nextConfig: NextConfig = {
   // experimental: {
   //   globalNotFound: true,
   // },
-// next.config.js
-
+  // next.config.js
 
   async rewrites() {
     return [

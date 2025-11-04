@@ -6,7 +6,10 @@ import { DataStateHandler } from "@/app/_common/component/molecules/DataStateHan
 import CommonTable from "@/app/_common/component/organism/CommonTable";
 import PageViewContainer from "@/app/_common/component/templates/PageViewContainer";
 import { HELP_DESCRIPTIONS_DICTIONARY } from "@/app/_common/const";
-import { useDividendsEvents, useDividendsTTM } from "@/app/_common/hooks/useDividends";
+import {
+  useDividendsEvents,
+  useDividendsTTM,
+} from "@/app/_common/hooks/useDividends";
 import { type DummyTableContents } from "@/app/company-info/[ticker]/_types";
 
 function getFrequencyNumber(frequency: string): number | null {
@@ -30,13 +33,12 @@ export default function CompanyDividendView() {
   const params = useParams();
   const ticker = params.ticker as string;
 
-  // API calls
   const {
     data: dividendsEventsData,
     isLoading: isLoadingEvents,
     error: errorEvents,
   } = useDividendsEvents(ticker);
-  
+
   const {
     data: dividendsTTMData,
     isLoading: isLoadingTTM,
@@ -95,6 +97,9 @@ export default function CompanyDividendView() {
       isLoading={isLoading}
       error={error}
       title="최근 배당 기준"
+      isEmpty={
+        !dividendsEventsData?.items?.length && !dividendsTTMData?.items?.length
+      }
     >
       <PageViewContainer>
         <h2 className="typo-micro mb-[18px]">최근 배당 기준</h2>

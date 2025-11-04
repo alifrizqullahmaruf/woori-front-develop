@@ -4,21 +4,22 @@ import {
   Chart as ChartJS,
   LinearScale,
 } from "chart.js";
+import type { ChartData, ChartOptions, TooltipItem } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
+import type { Context as DataLabelsContext } from "chartjs-plugin-datalabels";
 import { useMemo, useRef } from "react";
 import { Bar } from "react-chartjs-2";
 
 export interface CommonChartProps {
   isUpdateChart?: boolean;
-  rawData: number[];              // <- ini AKAN dipakai sbg tinggi batang (kita buat absolut di dalam)
-  originalValues?: number[];      // <- nilai ASLI untuk label/tooltip (opsional tapi disarankan)
+  rawData: number[];
+  originalValues?: number[];
   labels: string[];
   additionalLabels?: string[];
   width?: number;
   height?: number;
-
-  valueDecimals?: number;         // default 2
-  valueSuffix?: string;           // "조" | "원" | dst
+  valueDecimals?: number;
+  valueSuffix?: string;
 }
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ChartDataLabels);
@@ -26,7 +27,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, ChartDataLabels);
 export default function BarChart({
   isUpdateChart = false,
   rawData,
-  originalValues,       // <- kalau tak dikirim, fallback ke rawData
+  originalValues,
   labels,
   additionalLabels,
   width,
@@ -36,19 +37,19 @@ export default function BarChart({
 }: CommonChartProps) {
   const chartRef = useRef<ChartJS<"bar"> | null>(null);
 
-  // 1) Tinggi batang = nilai ABSOLUT, agar tidak "terbalik"
+  // Bar heights use absolute values to avoid inverted bars
   const barHeights = useMemo(
     () => rawData.map((v) => (Number.isFinite(v) ? Math.abs(v) : 0)),
     [rawData],
   );
 
-  // Nilai untuk ditampilkan di label/tooltip (tetap bertanda)
+  // Values shown on labels/tooltips (original values if provided)
   const displayValues = useMemo(
     () => (originalValues?.length ? originalValues : rawData),
     [originalValues, rawData],
   );
 
-  // Persen (YoY/PoP)
+  // Percentage labels (YoY / PoP)
   const percentLabels = useMemo(() => {
     if (additionalLabels?.length) return additionalLabels;
     return displayValues.map((v, i, arr) => {
@@ -60,14 +61,14 @@ export default function BarChart({
   }, [additionalLabels, displayValues]);
 
   const chartData = useMemo(
-    () => ({
+    (): ChartData<"bar"> => ({
       datasets: [
         {
-          data: barHeights,     // <- gunakan tinggi absolut
+          data: barHeights,
           barThickness: 42,
           borderRadius: 6,
           backgroundColor: "#B1DAFF",
-          minBarLength: 2,      // agar nilai kecil tetap kelihatan
+          minBarLength: 2,
         },
       ],
       labels,
@@ -76,7 +77,7 @@ export default function BarChart({
   );
 
   const chartOptions = useMemo(
-    () => ({
+    (): ChartOptions<"bar"> => ({
       animation: { duration: 300 },
       responsive: true,
       maintainAspectRatio: false,
@@ -85,17 +86,19 @@ export default function BarChart({
         tooltip: {
           enabled: true,
           callbacks: {
-            title: (ctx: any) => labels[ctx[0].dataIndex],
-            label: (ctx: any) => {
-              const idx = ctx.dataIndex ?? 0;
-              const val = displayValues[idx] ?? 0; // gunakan nilai asli dg tanda
-              const fixed = Number.isFinite(val) ? val.toFixed(valueDecimals) : "0";
-              return valueSuffix ? `${fixed}${valueSuffix}` : fixed;
+            title: (items: TooltipItem<"bar">[]) => labels[items[0].dataIndex],
+            label: (item: TooltipItem<"bar">) => {
+              const dataIndex = item.dataIndex ?? 0;
+              const value = displayValues[dataIndex] ?? 0;
+              const formattedValue = Number.isFinite(value)
+                ? value.toFixed(valueDecimals)
+                : "0";
+              return valueSuffix
+                ? `${formattedValue}${valueSuffix}`
+                : formattedValue;
             },
           },
         },
-
-        // Datalabels: persen (berwarna, di atas) + nilai asli (netral, di bawah)
         datalabels: {
           anchor: "end",
           align: "top",
@@ -103,23 +106,31 @@ export default function BarChart({
           clip: false,
           labels: {
             pct: {
-              display: (ctx: any) => isUpdateChart && !!percentLabels[ctx.dataIndex ?? 0],
-              formatter: (_: number, ctx: any) => percentLabels[ctx.dataIndex ?? 0] ?? "",
-              color: (ctx: any) => {
-                const s = (percentLabels[ctx.dataIndex ?? 0] || "0").toString().replace("%", "");
-                const v = parseFloat(s);
-                if (!Number.isFinite(v)) return "#3F4150";
-                return v >= 0 ? "#E34850" /* hijau */ : "#2962FF" /* merah */;
+              display: (ctx: DataLabelsContext) =>
+                isUpdateChart && !!percentLabels[ctx.dataIndex ?? 0],
+              formatter: (_unused: unknown, ctx: DataLabelsContext) =>
+                percentLabels[ctx.dataIndex ?? 0] ?? "",
+              color: (ctx: DataLabelsContext) => {
+                const numericText = (percentLabels[ctx.dataIndex ?? 0] || "0")
+                  .toString()
+                  .replace("%", "");
+                const percentNumber = parseFloat(numericText);
+                if (!Number.isFinite(percentNumber)) return "#3F4150";
+                return percentNumber >= 0 ? "#E34850" : "#2962FF";
               },
               font: { size: 12, family: "Lato Numbers", weight: "bold" },
-              offset: 14, // persen DI ATAS nilai
+              offset: 14,
             },
             val: {
-              formatter: (_absHeight: number, ctx: any) => {
-                const idx = ctx.dataIndex ?? 0;
-                const val = displayValues[idx] ?? 0; // nilai asli (bisa minus)
-                const fixed = Number.isFinite(val) ? val.toFixed(valueDecimals) : "0";
-                return valueSuffix ? `${fixed}${valueSuffix}` : fixed;
+              formatter: (_computedBarHeight: unknown, ctx: DataLabelsContext) => {
+                const dataIndex = ctx.dataIndex ?? 0;
+                const value = displayValues[dataIndex] ?? 0;
+                const formattedValue = Number.isFinite(value)
+                  ? value.toFixed(valueDecimals)
+                  : "0";
+                return valueSuffix
+                  ? `${formattedValue}${valueSuffix}`
+                  : formattedValue;
               },
               color: "#3F4150",
               font: { size: 12, family: "Lato Numbers", weight: "bold" },
@@ -132,19 +143,28 @@ export default function BarChart({
         x: {
           grid: { display: false },
           border: { display: false },
-          ticks: { font: { size: 12, family: "Lato Numbers" }, color: "#3F4150" },
+          ticks: {
+            font: { size: 12, family: "Lato Numbers" },
+            color: "#3F4150",
+          },
         },
         y: {
           display: false,
           grid: { display: false },
           beginAtZero: true,
-          suggestedMin: 0,   // <- mulai dari 0 (hanya area positif)
-          // suggestedMax bisa dibiarkan auto
+          suggestedMin: 0,
         },
       },
       layout: { padding: { top: isUpdateChart ? 38 : 26 } },
     }),
-    [isUpdateChart, labels, percentLabels, displayValues, valueDecimals, valueSuffix],
+    [
+      isUpdateChart,
+      labels,
+      percentLabels,
+      displayValues,
+      valueDecimals,
+      valueSuffix,
+    ],
   );
 
   return (
@@ -152,7 +172,7 @@ export default function BarChart({
       ref={chartRef}
       className="pt-4"
       data={chartData}
-      options={chartOptions as any}
+      options={chartOptions}
       {...(width && { width })}
       {...(height && { height })}
     />

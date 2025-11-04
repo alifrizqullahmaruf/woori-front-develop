@@ -2,9 +2,15 @@
 import PageViewContainer from "./_common/component/templates/PageViewContainer";
 import NotFoundImg from "@/public/images/not_found.png";
 import Image from "next/image";
+import { useEffect } from "react";
+import { usePageMeta } from "@/app/_global/providers/PageMetaProvider";
 
 
 export default function NotFound() {
+  const { setHideFooter } = usePageMeta();
+  useEffect(() => {
+    setHideFooter(true);
+  }, [setHideFooter]);
   const handleConfirm = () => {
     window.location.href = "/";
   };

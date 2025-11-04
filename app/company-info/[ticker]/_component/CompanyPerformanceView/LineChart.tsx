@@ -15,7 +15,7 @@ export interface CommonChartProps {
   isUpdateChart?: boolean;
   rawData: number[];
   labels: string[];
-  additionalLabels?: string[]; // optional YoY (%)
+  additionalLabels?: string[]; // Optional YoY (%)
   width?: number;
   height?: number;
 }
@@ -87,7 +87,7 @@ export default function LineChart({
       plugins: {
         legend: { display: false },
         tooltip: {
-          enabled: rawData.length > 30 ? true : false,
+          enabled: rawData.length > 30,
           mode: "index" as const,
           intersect: false,
           backgroundColor: "rgba(0, 0, 0, 0.8)",
@@ -103,13 +103,12 @@ export default function LineChart({
           },
         },
 
-        // ── Multi-labels: persentase (berwarna) + nilai (netral)
         datalabels: {
           anchor: "end",
           align: "top",
           textAlign: "center",
           labels: {
-            // PERSEN (di ATAS)
+            // Percentage label (above point)
             pct: {
               display: (ctx: any) =>
                 isUpdateChart && !!percentLabels[ctx.dataIndex ?? 0],
@@ -126,16 +125,14 @@ export default function LineChart({
                 return v >= 0 ? "#E34850" : "#2962FF";
               },
               font: { size: 12, family: "Lato Numbers", weight: "bold" },
-              // ↓ PENTING: persen lebih JAUH dari titik → tampil LEBIH ATAS
               offset: 14,
             },
 
-            // NILAI + "조" (di BAWAH persen, dekat titik)
+            // Value label (below percentage)
             val: {
               formatter: (value: number) => `${fmtNumber(value)}%`,
               color: "#3F4150",
               font: { size: 12, family: "Lato Numbers", weight: "bold" },
-              // ↓ dekat elemen → tampil DI BAWAH persen
               offset: 0,
             },
           },
@@ -156,9 +153,8 @@ export default function LineChart({
           grace: "20%",
         },
       },
-      // ruang ekstra untuk 2 baris label saat compare
       layout: { padding: { top: isUpdateChart ? 60 : 40 } },
-      maintainAspectRatio: rawData.length > 30 ? true : false,
+      maintainAspectRatio: rawData.length > 30,
     }),
     [isUpdateChart, labels, rawData.length, percentLabels],
   );
@@ -172,7 +168,7 @@ export default function LineChart({
       ref={chartRef}
       data={chartData}
       options={chartOptions as any}
-      className={"max-h-[346px]"}
+      className="max-h-[346px]"
       {...(width && { width })}
       {...(height && { height })}
     />
