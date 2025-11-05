@@ -20,15 +20,19 @@ export default function ThemeDetailPageView() {
         클라우드 기업, 그리고 AI 학습에 필요한 대규모 데이터를
         수집·가공·관리하는 데이터 기업들이 포함됩니다.
       </p>
+      {/* Line Chart*/}
       <section className={"mt-[21px]"}>
         <ThemeReturnsSection />
+        {/* items */}
       </section>
       <section className={"mt-[54px]"}>
         <RepresentativesSection />
       </section>
+      {/* News */}
       <section className={"mt-[54px]"}>
         <ThemeMovementNewsSection />
       </section>
+      {/* Treemap Chart */}
       <section className={"mt-[54px]"}>
         <ThemeTreemapSection />
       </section>
@@ -43,7 +47,7 @@ interface ThemeRankBadgeProps {
 function ThemeRankBadge({ rank }: ThemeRankBadgeProps) {
   return (
     <div
-      className={"bg-accent-red/10 typo-tiny text-accent-red w-max px-2.5 py-1"}
+      className={"bg-accent-red/10 typo-tiny text-accent-red w-max px-2.5 py-1 rounded-sm"}
     >
       금주 테마 {rank}위
     </div>

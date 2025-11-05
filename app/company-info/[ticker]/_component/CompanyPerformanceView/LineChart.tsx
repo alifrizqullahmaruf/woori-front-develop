@@ -18,6 +18,10 @@ export interface CommonChartProps {
   additionalLabels?: string[]; // Optional YoY (%)
   width?: number;
   height?: number;
+  showYAxisLeft?: boolean;
+  yTicks?: number[];
+  yTickFormatter?: (v: number) => string;
+  showDataLabels?: boolean;
 }
 
 ChartJS.register(
@@ -50,6 +54,10 @@ export default function LineChart({
   additionalLabels,
   width,
   height,
+  showYAxisLeft = false,
+  yTicks,
+  yTickFormatter,
+  showDataLabels = true,
 }: CommonChartProps) {
   const chartRef = useRef<ChartJS<"line"> | null>(null);
 
@@ -104,6 +112,7 @@ export default function LineChart({
         },
 
         datalabels: {
+          ...(showDataLabels ? {} : { display: false }),
           anchor: "end",
           align: "top",
           textAlign: "center",
@@ -148,15 +157,53 @@ export default function LineChart({
           },
         },
         y: {
-          display: false,
-          beginAtZero: true,
+          display: showYAxisLeft,
+          beginAtZero: false,
           grace: "20%",
+          ...(Array.isArray(yTicks) && yTicks.length
+            ? {
+                min: Math.min(...yTicks),
+                max: Math.max(...yTicks),
+                ticks: {
+                  stepSize:
+                    yTicks.length > 1 ? Math.abs(yTicks[1]! - yTicks[0]!) : 10,
+                  callback: (v: any) =>
+                    typeof yTickFormatter === "function"
+                      ? yTickFormatter(Number(v))
+                      : `${v} %`,
+                  font: { size: 12, family: "Lato Numbers" },
+                  color: "#3F4150",
+                },
+                grid: { display: true, color: "#EEEEEE" },
+                border: { display: false },
+              }
+            : {
+                ticks: {
+                  callback: (v: any) =>
+                    typeof yTickFormatter === "function"
+                      ? yTickFormatter(Number(v))
+                      : `${v} %`,
+                  font: { size: 12, family: "Lato Numbers" },
+                  color: "#3F4150",
+                },
+                grid: { display: true, color: "#EEEEEE" },
+                border: { display: false },
+              }),
         },
       },
       layout: { padding: { top: isUpdateChart ? 60 : 40 } },
       maintainAspectRatio: rawData.length > 30,
     }),
-    [isUpdateChart, labels, rawData.length, percentLabels],
+    [
+      isUpdateChart,
+      labels,
+      rawData.length,
+      percentLabels,
+      showYAxisLeft,
+      yTicks,
+      yTickFormatter,
+      showDataLabels,
+    ],
   );
 
   useEffect(() => {

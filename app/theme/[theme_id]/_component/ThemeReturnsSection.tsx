@@ -18,6 +18,12 @@ const LineChart = dynamic(
 export default function ThemeReturnsSection() {
   const [selectedTab, changeTab] = useTab();
 
+  // Build filtered labels/values based on selected tab
+  const { labels, values, yTicks, yTickFormatter } = useFilteredChartData(
+    DUMMY_CHART_DATA,
+    selectedTab,
+  );
+
   return (
     <div>
       <h2 className={"typo-small mb-[9px] font-medium"}>
@@ -44,9 +50,13 @@ export default function ThemeReturnsSection() {
       </ul>
       {/* <div className={"bg-border h-[45vw] max-h-[346px]"} /> */}
       <LineChart
-        rawData={DUMMY_CHART_DATA.values}
-        labels={DUMMY_CHART_DATA.labels}
+        rawData={values}
+        labels={labels}
         height={200}
+        showYAxisLeft
+        yTicks={yTicks}
+        yTickFormatter={yTickFormatter}
+        showDataLabels={false}
       />
     </div>
   );
@@ -393,3 +403,80 @@ const useTab = () => {
 
   return [selectedTab, changeTab] as const;
 };
+
+type TabValue = (typeof TAB_DATA)[number]["value"];
+
+function useFilteredChartData(
+  data: { labels: string[]; values: number[] },
+  tab: TabValue,
+) {
+  const { labels, values } = data;
+  if (!labels.length || labels.length !== values.length) {
+    return {
+      labels,
+      values,
+      yTicks: computeYTicks(values),
+      yTickFormatter: (v: number) => `${v} %`,
+    } as const;
+  }
+
+  const parse = (s: string) => new Date(s + "T00:00:00");
+  const lastDate = parse(labels[labels.length - 1]!);
+
+  let fromDate: Date;
+  switch (tab) {
+    case "annual": {
+      fromDate = new Date(lastDate);
+      fromDate.setDate(fromDate.getDate() - 365);
+      break;
+    }
+    case "ytd": {
+      fromDate = new Date(lastDate.getFullYear(), 0, 1);
+      break;
+    }
+    case "6_months": {
+      fromDate = new Date(lastDate);
+      fromDate.setMonth(fromDate.getMonth() - 6);
+      break;
+    }
+    case "1_month":
+    default: {
+      fromDate = new Date(lastDate);
+      fromDate.setDate(fromDate.getDate() - 30);
+      break;
+    }
+  }
+
+  const filtered: { labels: string[]; values: number[] } = { labels: [], values: [] };
+  for (let i = 0; i < labels.length; i += 1) {
+    const d = parse(labels[i]!);
+    if (d >= fromDate && d <= lastDate) {
+      filtered.labels.push(labels[i]!);
+      filtered.values.push(values[i]!);
+    }
+  }
+
+  const yTicks = computeYTicks(filtered.values);
+  const yTickFormatter = (v: number) => `${v} %`;
+
+  return { ...filtered, yTicks, yTickFormatter } as const;
+}
+
+function computeYTicks(values: number[]) {
+  if (!values.length) return undefined;
+  let min = Math.min(...values);
+  let max = Math.max(...values);
+  // Round outward to nearest multiple of 10
+  const floor10 = (n: number) => Math.floor(n / 10) * 10;
+  const ceil10 = (n: number) => Math.ceil(n / 10) * 10;
+  min = floor10(min);
+  max = ceil10(max);
+  if (min === max) {
+    // Expand a bit to show at least one step
+    min = floor10(min - 10);
+    max = ceil10(max + 10);
+  }
+  const ticks: number[] = [];
+  for (let v = min; v <= max; v += 10) ticks.push(v);
+  return ticks;
+}
