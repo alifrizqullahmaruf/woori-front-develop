@@ -162,7 +162,7 @@ export default function CompanySearchClient() {
               updateQueryParam(val);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="ì¢…ëª© ê²€ìƒ‰"
+            placeholder="종목 검색"
             className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-10 pl-10 text-base transition-all duration-200 outline-none"
             aria-label="íšŒì‚¬ ê²€ìƒ‰"
             style={{ fontSize: "16px" }}
@@ -189,7 +189,7 @@ export default function CompanySearchClient() {
           onClick={() => router.back()}
           className="shrink-0 text-sm font-medium text-[#86A7CC] transition hover:opacity-70"
         >
-          ì·¨ì†Œ
+          취소
         </button>
       </div>
 
@@ -201,14 +201,14 @@ export default function CompanySearchClient() {
             {/* History Header */}
             <div className="mb-3 flex items-center justify-between px-3">
               <div className="flex items-center">
-                <span className="text-sm font-bold text-[#86A7CC]">ìµœê·¼ ê²€ìƒ‰ì–´</span>
+                <span className="text-sm font-bold text-[#86A7CC]">최근 검색어</span>
               </div>
               <button
                 type="button"
                 onClick={clearHistory}
                 className="text-xs text-[#86A7CC]"
               >
-                ì „ì²´ ì‚­ì œ
+                전체 삭제
               </button>
             </div>
 
