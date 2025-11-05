@@ -21,28 +21,46 @@ import CompanyShareView from "@/app/company-info/[ticker]/_component/CompanyShar
 export default function CompanyInfoPageView() {
   const router = useRouter();
   const [view, changeMenu, currentMenu] = useCompanyInfoTab();
-  
+
   // Read URL params with explicit typing and runtime-safe normalization.
   const { ticker: paramTicker } = useParams<{ ticker?: string | string[] }>();
   const ticker = useMemo(() => {
     if (typeof paramTicker === "string") return paramTicker;
-    if (Array.isArray(paramTicker) && typeof paramTicker[0] === "string") return paramTicker[0];
+    if (Array.isArray(paramTicker) && typeof paramTicker[0] === "string")
+      return paramTicker[0];
     return "";
   }, [paramTicker]);
 
   // If ticker is missing or invalid, surface a clear error via DataStateHandler.
   const paramsError = useMemo(() => {
-    return ticker ? null : new Error("Invalid or missing ticker URL parameter.");
+    return ticker
+      ? null
+      : new Error("Invalid or missing ticker URL parameter.");
   }, [ticker]);
 
-  const { data: companyData, isLoading: isLoadingCompany, error: companyError } = useCompany(ticker);
-  const { data: priceData, isLoading: isLoadingPrice, error: priceError } = useDailyPricesLatest(ticker);
-  const { data: allCompanies, isLoading: isLoadingCompanies } = useAllCompanies();
+  const {
+    data: companyData,
+    isLoading: isLoadingCompany,
+    error: companyError,
+  } = useCompany(ticker);
+  const {
+    data: priceData,
+    isLoading: isLoadingPrice,
+    error: priceError,
+  } = useDailyPricesLatest(ticker);
+  const { data: allCompanies, isLoading: isLoadingCompanies } =
+    useAllCompanies();
 
   const isLoading = isLoadingCompany || isLoadingPrice;
   const error = paramsError || companyError || priceError;
 
-  const { formattedPrice, formattedChange, priceColor, companyName, currencySymbol } = useMemo(() => {
+  const {
+    formattedPrice,
+    formattedChange,
+    priceColor,
+    companyName,
+    currencySymbol,
+  } = useMemo(() => {
     if (!priceData?.items?.length) {
       return {
         latestPrice: null,
@@ -55,20 +73,29 @@ export default function CompanyInfoPageView() {
     }
 
     const sortedItems = [...priceData.items].sort(
-      (a, b) => new Date(b.price_date).getTime() - new Date(a.price_date).getTime()
+      (a, b) =>
+        new Date(b.price_date).getTime() - new Date(a.price_date).getTime(),
     );
     const latest = sortedItems[0];
 
     const percentChange = latest?.percent_change ?? 0;
     const netChange = latest?.net_change ?? 0;
-    const price = latest?.closing_price != null ? formatCurrency(latest.closing_price) : "N/A";
+    const price =
+      latest?.closing_price != null
+        ? formatCurrency(latest.closing_price)
+        : "N/A";
     const change =
       latest && latest.percent_change != null && latest.net_change != null
         ? `${percentChange >= 0 ? "+" : ""}${formatPercentage(percentChange / 100)} (${formatCurrency(Math.abs(netChange))})`
         : "N/A";
     const color = percentChange >= 0 ? "text-red-500" : "text-blue-500";
-    const name = companyData?.items?.[0]?.company_name_kr || companyData?.items?.[0]?.company_name || " ";
-    const currency = latest?.currency ? getCurrencySymbol(latest.currency) : "원";
+    const name =
+      companyData?.items?.[0]?.company_name_kr ||
+      companyData?.items?.[0]?.company_name ||
+      " ";
+    const currency = latest?.currency
+      ? getCurrencySymbol(latest.currency)
+      : "원";
 
     return {
       latestPrice: latest,
@@ -84,17 +111,16 @@ export default function CompanyInfoPageView() {
     <DataStateHandler isLoading={isLoading} error={error}>
       <article className="flex flex-1 flex-col pb-[52px]">
         {/* Full-width search at top */}
-        <div className="px-6 pt-4">
+        <div className="px-6">
           <CompanySearch
             companies={allCompanies?.items || []}
             isLoading={isLoadingCompanies}
             onSelect={(selectedTicker) => {
               router.push(`/company-info/${selectedTicker}`);
             }}
-            placeholder="종목 검색"
           />
         </div>
-        
+
         <header className="relative p-6 pt-3">
           <h1 className="typo-large font-medium">
             {companyName}
@@ -106,13 +132,15 @@ export default function CompanyInfoPageView() {
             </div>
           </h1>
         </header>
-        
+
         <nav>
           <TabList tabDataList={menuList} onClickAction={changeMenu} />
         </nav>
-        
+
         {view}
-        {currentMenu === "dividend" && <hr className="bg-divider mt-1.5 h-6 border-none" />}
+        {currentMenu === "dividend" && (
+          <hr className="bg-divider mt-1.5 h-6 border-none" />
+        )}
       </article>
     </DataStateHandler>
   );

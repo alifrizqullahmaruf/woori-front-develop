@@ -42,9 +42,9 @@ export function DataStateHandler({
   if (isEmpty) {
     return (
       <PageViewContainer>
-        <div className="flex flex-col items-center justify-center py-10 text-gray-500">
+        <div className="flex flex-col items-center justify-center py-10">
           <Empty className="size-10 text-gray-400" />
-          <p className="text-sm">아직 데이터가 없습니다.</p>
+          <p className="text-base text-black">아직 데이터가 없습니다.</p>
         </div>
       </PageViewContainer>
     );
