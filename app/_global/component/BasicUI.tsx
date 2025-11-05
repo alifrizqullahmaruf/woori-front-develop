@@ -27,6 +27,7 @@ export default function BasicUI({
     hideFooter ||
     hideFooterFromContext ||
     pathname.includes("/company-info/");
+    pathname.includes("/company-search") 
 
   
   const handleBackButtonClick = useCallback(() => {
