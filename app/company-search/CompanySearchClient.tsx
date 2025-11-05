@@ -253,7 +253,7 @@ export default function CompanySearchClient() {
           <div className="flex min-h-[400px] flex-col items-center justify-center px-4">
             <div className="flex flex-col items-center gap-4">
               <NotFoundSVG aria-hidden="true" />
-              <p className="text-center text-sm text-gray-500">ìµœê·¼ ê²€ìƒ‰ ë‚´ì—­ì´ ì—†ìŠµë‹ˆë‹¤</p>
+              <p className="text-center text-sm text-gray-500">최근 검색 기록이 없습니다.</p>
             </div>
           </div>
         )}
@@ -270,7 +270,7 @@ export default function CompanySearchClient() {
           <div className="flex min-h-[400px] flex-col items-center justify-center px-4">
             <div className="flex flex-col items-center gap-4">
               <Empty aria-hidden="true" className="text-[#86A7CC]" />
-              <p className="text-center text-sm text-gray-500">ê²€ìƒ‰ ê²°ê³¼ê°€ ì—†ìŠµë‹ˆë‹¤.</p>
+              <p className="text-center text-sm text-gray-500">검색 결과가 없습니다.</p>
             </div>
           </div>
         )}
