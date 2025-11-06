@@ -25,7 +25,7 @@ export default function CompanySearch({
           onClick={() => router.push("/company-search")}
           placeholder={placeholder}
           readOnly
-          className="w-full cursor-pointer rounded-lg border border-gray-300 bg-white py-2.5 pr-10 pl-10 text-sm transition-all duration-200 outline-none hover:border-gray-400"
+          className="w-full cursor-pointer rounded-lg border border-[#8C8D96] bg-white py-2.5 pr-10 pl-10 text-sm transition-all duration-200 outline-none"
           aria-label="회사 검색"
         />
       </div>

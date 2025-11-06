@@ -1,26 +1,28 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FiSearch, FiX } from "react-icons/fi";
-import Empty from "@/app/_common/assets/icons/Empty.svg";
-import NotFoundSVG from "@/app/_common/assets/icons/NotFound.svg";
-import LoadingDots from "@/app/_common/component/atoms/LoadingDots";
-import CompanyLogo from "@/app/_common/component/molecules/CompanySearch/CompanyLogo";
 import { useDebounce } from "@/app/_common/component/molecules/CompanySearch/useDebounce";
 import { useSearchHistory } from "@/app/_common/component/molecules/CompanySearch/useSearchHistory";
+import NotFoundSVG from "@/app/_common/assets/icons/NotFound.svg";
+import LoadingDots from "@/app/_common/component/atoms/LoadingDots";
+import Empty from "@/app/_common/assets/icons/Empty.svg";
+import CompanyLogo from "@/app/_common/component/molecules/CompanySearch/CompanyLogo";
 import { useAllCompanies } from "@/app/_common/hooks/useCompanies";
 
-export default function CompanySearchClient() {
+export default function CompanySearchPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const { data: allCompanies, isLoading: isLoadingCompanies } = useAllCompanies();
+  const { data: allCompanies, isLoading: isLoadingCompanies } =
+    useAllCompanies();
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState<string>(searchParams.get("q") || "");
   const [activeIndex, setActiveIndex] = useState<number>(-1);
+  const [isFocused, setIsFocused] = useState(false);
 
   const debouncedQuery = useDebounce(query, 300);
 
@@ -36,9 +38,12 @@ export default function CompanySearchClient() {
       } else {
         params.delete("q");
       }
-      router.replace(`${pathname}${params.toString() ? `?${params.toString()}` : ""}`, { scroll: false });
+      router.replace(
+        `${pathname}${params.toString() ? `?${params.toString()}` : ""}`,
+        { scroll: false },
+      );
     },
-    [pathname, router, searchParams]
+    [pathname, router, searchParams],
   );
 
   useEffect(() => {
@@ -55,7 +60,9 @@ export default function CompanySearchClient() {
     return companies
       .filter((c) => {
         const companyName = (
-          c.company_name_kr || c.company_name || ""
+          c.company_name_kr ||
+          c.company_name ||
+          ""
         ).toLowerCase();
         const tickerCode = (c.ticker || "").toLowerCase();
         return companyName.includes(q) || tickerCode.includes(q);
@@ -85,7 +92,10 @@ export default function CompanySearchClient() {
         };
       });
     }
-    return filteredOptions.map((opt) => ({ ...opt, isHistory: false as const }));
+    return filteredOptions.map((opt) => ({
+      ...opt,
+      isHistory: false as const,
+    }));
   }, [isHistoryMode, history, filteredOptions, allCompanies]);
 
   const hasQuery = query.trim().length > 0;
@@ -98,7 +108,7 @@ export default function CompanySearchClient() {
       // Navigate to company page
       router.push(`/company-info/${ticker}`);
     },
-    [addHistory, router]
+    [addHistory, router],
   );
 
   // Keyboard navigation for the search input
@@ -137,20 +147,23 @@ export default function CompanySearchClient() {
           break;
       }
     },
-    [displayOptions, activeIndex, handleSelect, router]
+    [displayOptions, activeIndex, handleSelect, router],
   );
 
   return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-[720px] flex-col bg-white">
+    <div className="mx-auto flex w-full flex-col bg-white">
       {/* Header */}
-      <div className="flex shrink-0 items-center gap-3 px-4 py-3">
+      <div className="flex shrink-0 items-center gap-3 px-6">
         {/* Search bar */}
         <div className="relative flex-1">
           <FiSearch
-            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-gray-400"
+            className={`pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 transition-colors duration-200 ${
+              isFocused || query.trim() ? "text-primary-650" : "text-gray-600"
+            }`}
             size={18}
             aria-hidden="true"
           />
+
           <input
             ref={inputRef}
             type="text"
@@ -161,11 +174,12 @@ export default function CompanySearchClient() {
               setActiveIndex(-1);
               updateQueryParam(val);
             }}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
             onKeyDown={handleKeyDown}
             placeholder="종목 검색"
-            className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pr-10 pl-10 text-base transition-all duration-200 outline-none"
-            aria-label="íšŒì‚¬ ê²€ìƒ‰"
-            style={{ fontSize: "16px" }}
+            className="w-full cursor-pointer rounded-lg border border-[#8C8D96] bg-white py-2.5 pr-10 pl-10 text-sm transition-all duration-200 outline-none"
+            aria-label="회사 검색"
           />
           {hasQuery && (
             <button
@@ -177,7 +191,7 @@ export default function CompanySearchClient() {
                 updateQueryParam("");
               }}
               className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-              aria-label="ê²€ìƒ‰ì–´ ì§€ìš°ê¸°"
+              aria-label="검색어 지우기"
             >
               <FiX size={16} />
             </button>
@@ -187,7 +201,7 @@ export default function CompanySearchClient() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="shrink-0 text-sm font-medium text-[#86A7CC] transition hover:opacity-70"
+          className="text-primary-650 shrink-0 px-3 py-2 text-sm transition hover:opacity-70"
         >
           취소
         </button>
@@ -201,12 +215,14 @@ export default function CompanySearchClient() {
             {/* History Header */}
             <div className="mb-3 flex items-center justify-between px-3">
               <div className="flex items-center">
-                <span className="text-sm font-bold text-[#86A7CC]">최근 검색어</span>
+                <span className="text-primary-650 text-[16px] font-bold">
+                  최근 검색어
+                </span>
               </div>
               <button
                 type="button"
                 onClick={clearHistory}
-                className="text-xs text-[#86A7CC]"
+                className="text-primary-650 text-sm"
               >
                 전체 삭제
               </button>
@@ -223,12 +239,18 @@ export default function CompanySearchClient() {
                   onClick={() => handleSelect(option.ticker, option.company)}
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <CompanyLogo src={option.logo} alt={option.company} size={32} />
+                    <CompanyLogo
+                      src={option.logo}
+                      alt={option.company}
+                      size={32}
+                    />
                     <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                      <span className="truncate text-sm font-medium text-gray-900">
+                      <span className="truncate text-sm font-medium text-gray-800">
                         {option.company}
                       </span>
-                      <span className="shrink-0 text-sm text-gray-500">{option.ticker}</span>
+                      <span className="shrink-0 text-sm text-gray-800">
+                        {option.ticker}
+                      </span>
                     </div>
                   </div>
                   <button
@@ -237,10 +259,10 @@ export default function CompanySearchClient() {
                       e.stopPropagation();
                       removeFromHistory(option.ticker);
                     }}
-                    className="ml-2 p-1 text-gray-400 transition hover:text-gray-600"
-                    aria-label="ì‚­ì œ"
+                    className="ml-2 p-1 font-bold text-[#1C1B1F]"
+                    aria-label="삭제"
                   >
-                    <FiX size={18} />
+                    <FiX size={18} strokeWidth={3} />
                   </button>
                 </div>
               ))}
@@ -252,8 +274,10 @@ export default function CompanySearchClient() {
         {isHistoryMode && history.length === 0 && (
           <div className="flex min-h-[400px] flex-col items-center justify-center px-4">
             <div className="flex flex-col items-center gap-4">
-              <NotFoundSVG aria-hidden="true" />
-              <p className="text-center text-sm text-gray-500">최근 검색 기록이 없습니다.</p>
+              <NotFoundSVG aria-hidden="true" className="text-gray-400" />
+              <p className="text-center text-base text-black">
+                최근 검색 내역이 없습니다
+              </p>
             </div>
           </div>
         )}
@@ -269,8 +293,10 @@ export default function CompanySearchClient() {
         {!isLoadingCompanies && hasQuery && displayOptions.length === 0 && (
           <div className="flex min-h-[400px] flex-col items-center justify-center px-4">
             <div className="flex flex-col items-center gap-4">
-              <Empty aria-hidden="true" className="text-[#86A7CC]" />
-              <p className="text-center text-sm text-gray-500">검색 결과가 없습니다.</p>
+              <Empty aria-hidden="true" className="text-gray-400" />
+              <p className="text-center text-base text-black">
+                검색 결과가 없습니다.
+              </p>
             </div>
           </div>
         )}
@@ -283,14 +309,24 @@ export default function CompanySearchClient() {
                 <div
                   key={`search-${option.ticker}-${idx}`}
                   className={`flex cursor-pointer items-center gap-3 rounded-lg p-3 transition-colors ${
-                    idx === activeIndex ? "bg-blue-50 ring-2 ring-blue-500" : "hover:bg-gray-50"
+                    idx === activeIndex
+                      ? "bg-blue-50 ring-2 ring-blue-500"
+                      : "hover:bg-gray-50"
                   }`}
                   onClick={() => handleSelect(option.ticker, option.company)}
                 >
-                  <CompanyLogo src={option.logo} alt={option.company} size={32} />
+                  <CompanyLogo
+                    src={option.logo}
+                    alt={option.company}
+                    size={32}
+                  />
                   <div className="flex w-full items-center justify-between gap-2">
-                    <span className="truncate text-sm font-medium text-gray-900">{option.company}</span>
-                    <span className="shrink-0 text-sm text-gray-500">{option.ticker}</span>
+                    <span className="truncate text-sm font-medium text-gray-800">
+                      {option.company}
+                    </span>
+                    <span className="shrink-0 text-sm text-gray-800">
+                      {option.ticker}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -301,4 +337,3 @@ export default function CompanySearchClient() {
     </div>
   );
 }
-
