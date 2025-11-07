@@ -4,10 +4,10 @@ import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
 import ChartFallback from "@/app/_common/component/atoms/ChartFallback";
 
-const LineChart = dynamic(
+const LocalLineChart = dynamic(
   () =>
     import(
-      "@/app/company-info/[ticker]/_component/CompanyPerformanceView/LineChart"
+      "@/app/company-info/[ticker]/_component/CompanyPerformanceView/LineChartSolid"
     ),
   {
     ssr: false,
@@ -49,7 +49,7 @@ export default function ThemeReturnsSection() {
         ))}
       </ul>
       {/* <div className={"bg-border h-[45vw] max-h-[346px]"} /> */}
-      <LineChart
+      <LocalLineChart
         rawData={values}
         labels={labels}
         height={200}
