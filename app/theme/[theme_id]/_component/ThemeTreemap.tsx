@@ -74,7 +74,8 @@ export default function TreemapChart({
             borderColor: "#fff",
             borderWidth: 1,
             gapWidth: 1,
-            borderRadius: 15,
+            // Border rounded
+            borderRadius: 2,
           },
           labelLayout: function (params: any) {
             const width = params.rect.width;

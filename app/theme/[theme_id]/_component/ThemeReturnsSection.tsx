@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import ChartFallback from "@/app/_common/component/atoms/ChartFallback";
 
 const LocalLineChart = dynamic(
@@ -23,18 +23,27 @@ export default function ThemeReturnsSection() {
     DUMMY_CHART_DATA,
     selectedTab,
   );
+  const changePct = useMemo(() => {
+    if (!values?.length) return 0;
+    const first = values[0];
+    const last = values[values.length - 1];
+    if (first === 0) return 0;
+    return ((last / first) - 1) * 100;
+  }, [values]);
+
+  const formattedChange = `${changePct >= 0 ? "+" : ""}${changePct.toFixed(2)}%`;
 
   return (
     <div>
       <h2 className={"typo-small mb-[9px] font-medium"}>
-        이 테마, 1년간{" "}
+        이테마, {PERIOD_LABEL[selectedTab]}{" "}
         <span
           className={"font-family-numbers font-bold"}
-          style={{ color: "#e34850" }}
+          style={{ color: changePct >= 0 ? "#e34850" : "#2f6bff" }}
         >
-          +25.54%
+          {formattedChange}
         </span>{" "}
-        올랐어요
+        수익률
       </h2>
       <ul className={"mb-[18px] flex items-center py-[3.5px]"}>
         {TAB_DATA.map((item) => (
@@ -80,6 +89,15 @@ const TAB_DATA = [
     value: "1_month",
   },
 ];
+
+type TabValue = (typeof TAB_DATA)[number]["value"];
+
+const PERIOD_LABEL: Record<TabValue, string> = {
+  annual: "1년간",
+  ytd: "YTD",
+  "6_months": "6개월간",
+  "1_month": "1개월간",
+};
 
 const DUMMY_CHART_DATA = {
   values: [
@@ -392,10 +410,10 @@ const DUMMY_CHART_DATA = {
 };
 
 const useTab = () => {
-  const [selectedTab, setSelectedTab] = useState(TAB_DATA[0].value);
+  const [selectedTab, setSelectedTab] = useState<TabValue>(TAB_DATA[0].value);
 
   const changeTab = useCallback(
-    (value: string) => () => {
+    (value: TabValue) => () => {
       setSelectedTab(value);
     },
     [],
@@ -403,8 +421,6 @@ const useTab = () => {
 
   return [selectedTab, changeTab] as const;
 };
-
-type TabValue = (typeof TAB_DATA)[number]["value"];
 
 function useFilteredChartData(
   data: { labels: string[]; values: number[] },
