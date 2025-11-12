@@ -64,7 +64,7 @@ export default function CompanyShareView() {
       }
     });
 
-    const uniqueHolders = Array.from(holderMap.values());
+    const uniqueHolders = Array.from(holderMap.values()).filter((item) => item.share > 0);
     const sortedHolders = [...uniqueHolders].sort((a, b) => b.share - a.share);
     const topFive = sortedHolders.slice(0, 5);
 

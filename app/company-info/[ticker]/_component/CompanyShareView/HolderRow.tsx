@@ -31,7 +31,7 @@ export default function HolderRow({
         {name}
       </td>
       <td colSpan={22} className={"font-numbers text-right font-bold"}>
-        {share}%
+        {share.toFixed(2)}%
       </td>
     </tr>
   );

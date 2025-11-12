@@ -72,17 +72,19 @@ export default function CommonSectionHybrid({
 
   const chartData = useMemo(() => {
     const mt = metricType;
-    if (!mt) return dummyBarChartDataSet;
+    if (!mt) {
+      return { values: [], percentages: [], labels: [] };
+    }
 
-    // ✅ Pakai data dari hooks
     const allowedPeriods =
       periodMode === "Annual" ? ["FY"] : ["Q1", "Q2", "Q3", "Q4"];
+
     const sourceItems = fundamentalsData?.items?.filter(
       (i) => i.metric_type === mt && allowedPeriods.includes(i.fiscal_period),
     );
 
-    if (!sourceItems || !sourceItems.length) {
-      return isRatioMetric ? dummyLineChartDataSet : dummyBarChartDataSet;
+    if (!sourceItems || sourceItems.length === 0) {
+      return { values: [], percentages: [], labels: [] };
     }
 
     const sortedItems = [...sourceItems].sort((a, b) => {
@@ -116,7 +118,9 @@ export default function CommonSectionHybrid({
 
     const labels = recentItems.map((i) => {
       const d = new Date(i.report_date);
-      return `${(d.getFullYear() % 100).toString().padStart(2, "0")}년 ${d.getMonth() + 1}월`;
+      return `${(d.getFullYear() % 100)
+        .toString()
+        .padStart(2, "0")}년 ${d.getMonth() + 1}월`;
     });
 
     return { values, percentages, labels };
@@ -134,26 +138,21 @@ export default function CommonSectionHybrid({
     [metricType],
   );
 
-  // Determine display unit based on magnitude for Revenue/Operating income/Net income
-  // Thresholds are based on raw values assumed in 백만원 단위:
-  // - 1조 = 1,000,000 (백만원)
-  // - 1억 = 100 (백만원)
   const barUnit = useMemo(() => {
     if (!scaleForBar) return undefined as undefined | "조" | "억" | "만";
     const maxAbs = Math.max(
       0,
       ...chartData.values.map((v) => (Number.isFinite(v) ? Math.abs(v) : 0)),
     );
-    if (maxAbs >= 1_000_000) return "조"; // 조 단위
-    if (maxAbs >= 100) return "억"; // 억 단위
-    return "만"; // 1억 미만이면 만 단위
+    if (maxAbs >= 1_000_000) return "조";
+    if (maxAbs >= 100) return "억";
+    return "만";
   }, [scaleForBar, chartData.values]);
 
   const barValuesScaled = useMemo(() => {
     if (!scaleForBar) return chartData.values;
-    // Convert from 백만원 → target unit using a multiplier
     const multiplier =
-      barUnit === "조" ? 1 / 1_000_000 : barUnit === "억" ? 1 / 100 : 100; // 만 단위는 x100
+      barUnit === "조" ? 1 / 1_000_000 : barUnit === "억" ? 1 / 100 : 100;
     return chartData.values.map((v) =>
       Number.isFinite(v) ? Number((v * multiplier).toFixed(1)) : 0,
     );
@@ -221,44 +220,37 @@ export default function CommonSectionHybrid({
       />
 
       <div className="m-6 h-[212px] px-3">
-        {isRatioMetric ? (
-          <LineChart
-            rawData={chartData.values}
-            labels={chartData.labels}
-            additionalLabels={chartData.percentages}
-            isUpdateChart={isUpdateChart}
-            height={212}
-          />
-        ) : (
-          <BarChart
-            rawData={barValuesScaled}
-            labels={chartData.labels}
-            additionalLabels={chartData.percentages}
-            isUpdateChart={isUpdateChart}
-            height={212}
-            valueDecimals={barValueDecimals}
-            valueSuffix={barValueSuffix}
-          />
-        )}
+        <DataStateHandler
+          isLoading={isLoading}
+          error={error}
+          isEmpty={chartData.values.length === 0}
+        >
+          {isRatioMetric ? (
+            <LineChart
+              rawData={chartData.values}
+              labels={chartData.labels}
+              additionalLabels={chartData.percentages}
+              isUpdateChart={isUpdateChart}
+              height={212}
+            />
+          ) : (
+            <BarChart
+              rawData={barValuesScaled}
+              labels={chartData.labels}
+              additionalLabels={chartData.percentages}
+              isUpdateChart={isUpdateChart}
+              height={212}
+              valueDecimals={barValueDecimals}
+              valueSuffix={barValueSuffix}
+            />
+          )}
+        </DataStateHandler>
       </div>
 
       <hr className="bg-divider h-2 border-none" />
     </section>
   );
 }
-
-// Dummy data & hooks still same
-const dummyBarChartDataSet = {
-  values: [74.0, 79.0, 75.7, 79.1],
-  percentages: ["23.44%", "17.35%", "11.82%", "10.05%"],
-  labels: ["24년 6월", "24년 9월", "24년 12월", "25년 3월"],
-};
-
-const dummyLineChartDataSet = {
-  values: [14.1, 11.61, 8.56, 8.44],
-  percentages: ["12.98%", "8.00%", "4.40%", "-0.73%"],
-  labels: ["24년 6월", "24년 9월", "24년 12월", "25년 3월"],
-};
 
 const modalContents = {
   title: "매출과 이익이란?",
@@ -273,9 +265,9 @@ const modalContents2 = {
     "유동비율은 유동자산을 유동부채로 나눈 비율로, 기업이 단기 빚을 갚을 수 있는 능력을 나타냅니다. 높을수록 안정적이지만, 너무 높으면 자산을 덜 효율적으로 활용할 수 있습니다.\n" +
     "EPS(Earning Per Share)는 기업이 주식 1주당 얼마나 이익을 냈는지를 나타냅니다. EPS가 높을수록 실적이 좋고 투자 가치도 높은 것으로 평가됩니다.\n" +
     "ROE(Return on Equity)는 자기자본 대비 얼마의 이익을 냈는지를 보여주는 수익성 지표입니다. 높을수록 자본을 효율적으로 운용하고 있다는 뜻입니다.\n" +
-    "ROA(Return on Assets)는 총자산을 얼마나 효율적으로 활용해 이익을 냈는지를 나타냅니다. 특히 금융회사에서는 자산 운용 성과를 보여주는 핵심 지표로 사용됩니다.\n" +
-    "PER(Price to Earnings Ratio)은 주가가 주당순이익(EPS)의 몇 배인지 보여주는 지표로, 낮을수록 상대적으로 저평가된 주식일 수 있습니다. 업종 내 비교를 통해 해석하는 것이 일반적입니다.\n" +
-    "PBR(Price to Book Ratio)는 주가가 주당순자산가치(청산 시 주주의 몫)의 몇 배인지를 나타냅니다. 1보다 낮으면 시장에서 자산가치보다 낮게 평가된 상태로 볼 수 있습니다.\n",
+    "ROA(Return on Assets)는 총자산을 얼마나 효율적으로 활용해 이익을 냈는지를 나타냅니다.\n" +
+    "PER(Price to Earnings Ratio)은 주가가 주당순이익(EPS)의 몇 배인지 보여주는 지표로, 낮을수록 상대적으로 저평가된 주식일 수 있습니다.\n" +
+    "PBR(Price to Book Ratio)는 주가가 주당순자산가치의 몇 배인지를 나타냅니다.\n",
 };
 
 const useHandlePeriodCompare = () => {
