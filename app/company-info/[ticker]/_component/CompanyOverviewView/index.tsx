@@ -151,7 +151,7 @@ export default function CompanyOverviewView() {
         value: company?.exchange_kr || company?.exchange || "-",
       },
     ],
-    [company, ticker],
+    [company, ticker, latestDailyPrice],
   );
 
   const tableContents2: DummyTableContents[] = useMemo(
