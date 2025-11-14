@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useCallback, useMemo, useState } from "react";
 import ChartFallback from "@/app/_common/component/atoms/ChartFallback";
+import type { AxisTick } from "@/app/company-info/[ticker]/_component/CompanyPerformanceView/LineChartSolid";
 
 const LocalLineChart = dynamic(
   () =>
@@ -19,10 +20,11 @@ export default function ThemeReturnsSection() {
   const [selectedTab, changeTab] = useTab();
 
   // Build filtered labels/values based on selected tab
-  const { labels, values, yTicks, yTickFormatter } = useFilteredChartData(
+  const { labels, values, yTicks, yTickFormatter, xTicks } = useFilteredChartData(
     DUMMY_CHART_DATA,
     selectedTab,
   );
+  
   const changePct = useMemo(() => {
     if (!values?.length) return 0;
     const first = values[0];
@@ -65,6 +67,7 @@ export default function ThemeReturnsSection() {
         showYAxisLeft
         yTicks={yTicks}
         yTickFormatter={yTickFormatter}
+        xTicks={xTicks}
         showDataLabels={false}
       />
     </div>
@@ -422,60 +425,59 @@ const useTab = () => {
   return [selectedTab, changeTab] as const;
 };
 
+type FilteredChartData = {
+  labels: string[];
+  values: number[];
+  yTicks?: number[];
+  yTickFormatter: (v: number) => string;
+  xTicks: AxisTick[];
+};
+
 function useFilteredChartData(
   data: { labels: string[]; values: number[] },
   tab: TabValue,
-) {
-  const { labels, values } = data;
-  if (!labels.length || labels.length !== values.length) {
+): FilteredChartData {
+  return useMemo<FilteredChartData>(() => {
+    const { labels, values } = data;
+    if (!labels.length || labels.length !== values.length) {
+      return {
+        labels,
+        values,
+        yTicks: computeYTicks(values),
+        yTickFormatter: (v: number) => `${v} %`,
+        xTicks: [],
+      };
+    }
+
+    const parse = (s: string) => new Date(`${s}T00:00:00`);
+    const lastDate = parse(labels[labels.length - 1]!);
+    const fromDate = computeFromDate(lastDate, tab);
+
+    const filteredLabels: string[] = [];
+    const filteredValues: number[] = [];
+    const filteredDates: Date[] = [];
+
+    for (let i = 0; i < labels.length; i += 1) {
+      const currentDate = parse(labels[i]!);
+      if (currentDate >= fromDate && currentDate <= lastDate) {
+        filteredLabels.push(labels[i]!);
+        filteredValues.push(values[i]!);
+        filteredDates.push(currentDate);
+      }
+    }
+
+    const yTicks = computeYTicks(filteredValues);
+    const yTickFormatter = (v: number) => `${v} %`;
+    const xTicks = computeXTicks(filteredDates, tab);
+
     return {
-      labels,
-      values,
-      yTicks: computeYTicks(values),
-      yTickFormatter: (v: number) => `${v} %`,
-    } as const;
-  }
-
-  const parse = (s: string) => new Date(s + "T00:00:00");
-  const lastDate = parse(labels[labels.length - 1]!);
-
-  let fromDate: Date;
-  switch (tab) {
-    case "annual": {
-      fromDate = new Date(lastDate);
-      fromDate.setDate(fromDate.getDate() - 365);
-      break;
-    }
-    case "ytd": {
-      fromDate = new Date(lastDate.getFullYear(), 0, 1);
-      break;
-    }
-    case "6_months": {
-      fromDate = new Date(lastDate);
-      fromDate.setMonth(fromDate.getMonth() - 6);
-      break;
-    }
-    case "1_month":
-    default: {
-      fromDate = new Date(lastDate);
-      fromDate.setDate(fromDate.getDate() - 30);
-      break;
-    }
-  }
-
-  const filtered: { labels: string[]; values: number[] } = { labels: [], values: [] };
-  for (let i = 0; i < labels.length; i += 1) {
-    const d = parse(labels[i]!);
-    if (d >= fromDate && d <= lastDate) {
-      filtered.labels.push(labels[i]!);
-      filtered.values.push(values[i]!);
-    }
-  }
-
-  const yTicks = computeYTicks(filtered.values);
-  const yTickFormatter = (v: number) => `${v} %`;
-
-  return { ...filtered, yTicks, yTickFormatter } as const;
+      labels: filteredLabels,
+      values: filteredValues,
+      yTicks,
+      yTickFormatter,
+      xTicks,
+    };
+  }, [data, tab]);
 }
 
 function computeYTicks(values: number[]) {
@@ -495,4 +497,255 @@ function computeYTicks(values: number[]) {
   const ticks: number[] = [];
   for (let v = min; v <= max; v += 10) ticks.push(v);
   return ticks;
+}
+
+const MAX_X_TICK_COUNT = 4;
+
+
+function computeFromDate(lastDate: Date, tab: TabValue) {
+  const fromDate = new Date(lastDate);
+  switch (tab) {
+    case "annual": {
+      fromDate.setMonth(fromDate.getMonth() - 12);
+      break;
+    }
+    case "ytd": {
+      return new Date(lastDate.getFullYear(), 0, 1);
+    }
+    case "6_months": {
+      fromDate.setMonth(fromDate.getMonth() - 6);
+      break;
+    }
+    case "1_month":
+    default: {
+      fromDate.setDate(fromDate.getDate() - 30);
+      break;
+    }
+  }
+  return fromDate;
+}
+
+function computeXTicks(dates: Date[], tab: TabValue): AxisTick[] {
+  if (!dates.length) return [];
+  switch (tab) {
+    case "1_month":
+      return buildDailyTicks(dates);
+    case "6_months":
+      return buildMonthlyTicks(dates, MAX_X_TICK_COUNT);
+    case "annual":
+      return buildMonthlyTicks(dates, MAX_X_TICK_COUNT);
+    case "ytd":
+      return buildQuarterTicks(dates);
+    default:
+      return buildMonthlyTicks(dates, MAX_X_TICK_COUNT);
+  }
+}
+
+function buildDailyTicks(dates: Date[]): AxisTick[] {
+  if (!dates.length) return [];
+  
+  const ticks: AxisTick[] = [];
+  const formatMonthDayLabel = (date: Date) =>
+    `${date.getMonth() + 1}월 ${date.getDate()}일`;
+  
+  const indices = [
+    0,
+    Math.floor(dates.length / 3),
+    Math.floor((dates.length * 2) / 3),
+    dates.length - 1
+  ];
+  
+
+  const uniqueIndices = [...new Set(indices)];
+  
+  uniqueIndices.forEach(idx => {
+    ticks.push({
+      index: idx,
+      label: formatMonthDayLabel(dates[idx]!),
+    });
+  });
+
+  return ticks;
+}
+
+function buildMonthlyTicks(dates: Date[], limit: number): AxisTick[] {
+  const buckets = collectMonthBuckets(dates);
+  if (!buckets.length) {
+    return buildEvenlySpacedTicks(dates, limit, formatKoreanMonth);
+  }
+  const bucketIndices = selectBucketIndices(buckets.length, limit);
+  const ticks = bucketIndices.map((bucketIdx) => {
+    const bucket = buckets[bucketIdx]!;
+    return {
+      index: bucket.index,
+      label: formatKoreanMonth(bucket.date),
+    };
+  });
+
+  return enforceTickLimit(ticks, limit);
+}
+
+function buildQuarterTicks(dates: Date[]): AxisTick[] {
+  if (!dates.length) return [];
+  const minDate = dates[0]!;
+  const maxDate = dates[dates.length - 1]!;
+  const candidateMonths = [0, 3, 6, 10];
+  const ticks: AxisTick[] = [];
+
+  candidateMonths.forEach((month) => {
+    const candidate = new Date(maxDate.getFullYear(), month, 1);
+    if (candidate < minDate || candidate > maxDate) return;
+    const idx = findClosestDateIndex(dates, candidate);
+    if (idx >= 0 && !ticks.some((tick) => tick.index === idx)) {
+      ticks.push({
+        index: idx,
+        label: formatKoreanMonth(dates[idx]!),
+      });
+    }
+  });
+
+  if (!ticks.length) {
+    return buildMonthlyTicks(dates, MAX_X_TICK_COUNT);
+  }
+
+  return enforceTickLimit(ticks, MAX_X_TICK_COUNT);
+}
+
+function buildEvenlySpacedTicks(
+  dates: Date[],
+  limit: number,
+  formatter: (date: Date) => string,
+): AxisTick[] {
+  if (!dates.length) return [];
+  if (dates.length <= limit) {
+    return dates.map((date, index) => ({
+      index,
+      label: formatter(date),
+    }));
+  }
+
+  const step = (dates.length - 1) / (limit - 1);
+  const seen = new Set<number>();
+  const ticks: AxisTick[] = [];
+
+  for (let i = 0; i < limit; i += 1) {
+    const idx = Math.round(i * step);
+    if (!seen.has(idx)) {
+      seen.add(idx);
+      ticks.push({
+        index: idx,
+        label: formatter(dates[idx]!),
+      });
+    }
+  }
+
+  for (let idx = 0; idx < dates.length && ticks.length < limit; idx += 1) {
+    if (!seen.has(idx)) {
+      seen.add(idx);
+      ticks.push({
+        index: idx,
+        label: formatter(dates[idx]!),
+      });
+    }
+  }
+
+  return ticks.sort((a, b) => a.index - b.index);
+}
+
+function collectMonthBuckets(dates: Date[]) {
+  const seen = new Set<string>();
+  const buckets: { index: number; date: Date }[] = [];
+
+  dates.forEach((date, idx) => {
+    const key = `${date.getFullYear()}-${date.getMonth()}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      buckets.push({ index: idx, date });
+    }
+  });
+
+  return buckets;
+}
+
+function selectBucketIndices(bucketCount: number, limit: number) {
+  if (bucketCount <= limit) {
+    return Array.from({ length: bucketCount }, (_, idx) => idx);
+  }
+
+  const step = (bucketCount - 1) / (limit - 1);
+  const indices: number[] = [];
+
+  for (let i = 0; i < limit; i += 1) {
+    indices.push(Math.round(i * step));
+  }
+
+  const unique = Array.from(new Set(indices));
+  for (let idx = 0; idx < bucketCount && unique.length < limit; idx += 1) {
+    if (!unique.includes(idx)) unique.push(idx);
+  }
+
+  return unique.sort((a, b) => a - b).slice(0, limit);
+}
+
+function findClosestIndexByDay(dates: Date[], targetDay: number) {
+  let bestIndex = -1;
+  let smallestDiff = Number.POSITIVE_INFINITY;
+  dates.forEach((date, idx) => {
+    const diff = Math.abs(date.getDate() - targetDay);
+    if (diff < smallestDiff) {
+      smallestDiff = diff;
+      bestIndex = idx;
+    }
+  });
+  return bestIndex;
+}
+
+function findClosestDateIndex(dates: Date[], target: Date) {
+  const targetTime = target.getTime();
+  let bestIndex = -1;
+  let smallestDiff = Number.POSITIVE_INFINITY;
+  dates.forEach((date, idx) => {
+    const diff = Math.abs(date.getTime() - targetTime);
+    if (diff < smallestDiff) {
+      smallestDiff = diff;
+      bestIndex = idx;
+    }
+  });
+  return bestIndex;
+}
+
+function enforceTickLimit(ticks: AxisTick[], limit: number): AxisTick[] {
+  if (ticks.length <= limit) {
+    return ticks.sort((a, b) => a.index - b.index);
+  }
+
+  const sorted = ticks.sort((a, b) => a.index - b.index);
+  const step = (sorted.length - 1) / (limit - 1);
+  const result: AxisTick[] = [];
+  const used = new Set<number>();
+
+  for (let i = 0; i < limit; i += 1) {
+    const idx = Math.round(i * step);
+    const tick = sorted[idx];
+    if (tick && !used.has(tick.index)) {
+      used.add(tick.index);
+      result.push(tick);
+    }
+  }
+
+  for (let i = 0; i < sorted.length && result.length < limit; i += 1) {
+    const tick = sorted[i]!;
+    if (!used.has(tick.index)) {
+      used.add(tick.index);
+      result.push(tick);
+    }
+  }
+
+  return result.sort((a, b) => a.index - b.index);
+}
+
+function formatKoreanMonth(date: Date) {
+  const year = `${date.getFullYear()}`.slice(-2);
+  const month = date.getMonth() + 1;
+  return `${year}년 ${month}월`;
 }

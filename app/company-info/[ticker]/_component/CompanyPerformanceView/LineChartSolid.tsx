@@ -11,6 +11,12 @@ import ChartDataLabels from "chartjs-plugin-datalabels";
 import { useEffect, useMemo, useRef } from "react";
 import { Line } from "react-chartjs-2";
 
+export type AxisTick = { index: number; label: string };
+
+const LINE_COLOR = "#2589F4";
+const GRIDLINE_COLOR = "#DBEBFD";
+const CHART_RIGHT_PADDING = 20;
+console.log(ChartJS.version);
 export interface CommonChartProps {
   isUpdateChart?: boolean;
   rawData: number[];
@@ -22,6 +28,7 @@ export interface CommonChartProps {
   yTicks?: number[];
   yTickFormatter?: (v: number) => string;
   showDataLabels?: boolean;
+  xTicks?: AxisTick[];
 }
 
 ChartJS.register(
@@ -58,6 +65,7 @@ export default function LineChartSolid({
   yTicks,
   yTickFormatter,
   showDataLabels = true,
+  xTicks,
 }: CommonChartProps) {
   const chartRef = useRef<ChartJS<"line"> | null>(null);
 
@@ -75,7 +83,7 @@ export default function LineChartSolid({
         {
           data: rawData,
           borderWidth: 2,
-          borderColor: "#2589F4",
+          borderColor: LINE_COLOR,
           // Hide markers (no dots)
           pointRadius: 0,
           pointHoverRadius: 0,
@@ -92,6 +100,14 @@ export default function LineChartSolid({
     [labels, rawData],
   );
 
+  const xTickLabelMap = useMemo(() => {
+    if (!xTicks?.length) return null;
+    return xTicks.reduce<Record<number, string>>((acc, tick) => {
+      acc[tick.index] = tick.label;
+      return acc;
+    }, {});
+  }, [xTicks]);
+
   const chartOptions = useMemo(
     () => ({
       responsive: true,
@@ -100,7 +116,7 @@ export default function LineChartSolid({
       plugins: {
         legend: { display: false },
         tooltip: {
-          enabled: rawData.length > 30,
+          enabled: true,
           mode: "index" as const,
           intersect: false,
           backgroundColor: "rgba(0, 0, 0, 0.8)",
@@ -153,9 +169,19 @@ export default function LineChartSolid({
         x: {
           grid: { display: false },
           border: { display: false },
+          offset: true,
           ticks: {
             font: { size: 12, family: "Lato Numbers" },
             color: "#3F4150",
+            padding: 11,
+            autoSkip: xTickLabelMap ? false : undefined,
+            maxTicksLimit: xTickLabelMap
+              ? Object.keys(xTickLabelMap).length
+              : undefined,
+            callback: (value: string | number, index: number) => {
+              if (!xTickLabelMap) return labels[index] ?? value;
+              return xTickLabelMap[index] ?? "";
+            },
           },
         },
         y: {
@@ -175,9 +201,20 @@ export default function LineChartSolid({
                       : `${v} %`,
                   font: { size: 12, family: "Lato Numbers" },
                   color: "#3F4150",
+                  padding: 10,
                 },
-                grid: { display: true, color: "#EEEEEE" },
-                border: { display: false },
+                border: {
+                  display: false,
+                  dash: [5, 5],
+                  dashOffset: 1,
+                  width: 1,
+                },
+                grid: {
+                  display: true,
+                  color: GRIDLINE_COLOR,
+                  lineWidth: 1,
+                  tickBorderDash: [2, 5],
+                },
               }
             : {
                 ticks: {
@@ -188,12 +225,19 @@ export default function LineChartSolid({
                   font: { size: 12, family: "Lato Numbers" },
                   color: "#3F4150",
                 },
-                grid: { display: true, color: "#EEEEEE" },
+                grid: {
+                  display: true,
+                  color: GRIDLINE_COLOR,
+                  borderDash: [0, 4],
+                  lineWidth: 1,
+                },
                 border: { display: false },
               }),
         },
       },
-      layout: { padding: { top: isUpdateChart ? 60 : 40 } },
+      layout: {
+        padding: { top: isUpdateChart ? 60 : 40, right: CHART_RIGHT_PADDING },
+      },
       maintainAspectRatio: rawData.length > 30,
     }),
     [
@@ -205,6 +249,7 @@ export default function LineChartSolid({
       yTicks,
       yTickFormatter,
       showDataLabels,
+      xTickLabelMap,
     ],
   );
 
