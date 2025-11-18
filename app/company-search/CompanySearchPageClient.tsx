@@ -11,7 +11,7 @@ import Empty from "@/app/_common/assets/icons/Empty.svg";
 import CompanyLogo from "@/app/_common/component/molecules/CompanySearch/CompanyLogo";
 import { useAllCompanies } from "@/app/_common/hooks/useCompanies";
 
-export default function CompanySearchPage() {
+export default function CompanySearchPageClient() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();

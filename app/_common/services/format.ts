@@ -7,13 +7,17 @@ export const formatCurrency = (value: number): string => {
 
 export const getCurrencySymbol = (currency: string): string => {
   switch (currency) {
-    case "KRW": return "원";
-    default: return currency;
+    case "KRW":
+      return "원";
+    case "USD":
+      return "$";
+    default:
+      return currency;
   }
 };
+
 
 export const formatPercentage = (value: number): string =>
   `${(value * 100).toFixed(2)}%`;
 
-export const formatRatio = (value: number): string =>
-  value.toFixed(2);
+export const formatRatio = (value: number): string => value.toFixed(2);
