@@ -9,6 +9,9 @@ import CommonSection from "./CommonSection";
 const dummyTabData1 = ["매출", "영업이익", "순이익", "영업이익률", "순이익률"];
 
 const dummyTabData2 = [
+  "자산",
+  "부채",
+  "자본",
   "부채비율",
   "유동비율",
   "EPS",

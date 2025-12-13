@@ -51,6 +51,9 @@ export default function CommonSection({
     순이익: "Net income",
     영업이익률: "Operating income margin",
     순이익률: "Net income margin",
+    자산: "Assets",
+    부채: "Liabilities",
+    자본: "Capital",
     부채비율: "Debt ratio",
     유동비율: "Current ratio",
     EPS: "EPS",
@@ -141,7 +144,10 @@ export default function CommonSection({
   ]);
 
   const scaleForBar = useMemo(
-    () => metricType ? ["Revenue", "Operating income", "Net income"].includes(metricType) : false,
+    () =>
+      metricType
+        ? ["Revenue", "Operating income", "Net income", "Assets", "Liabilities", "Capital"].includes(metricType)
+        : false,
     [metricType],
   );
 
@@ -167,7 +173,7 @@ export default function CommonSection({
 
   const barValueSuffix = useMemo(() => {
     if (!metricType) return undefined;
-    if (["Revenue", "Operating income", "Net income"].includes(metricType)) {
+    if (["Revenue", "Operating income", "Net income", "Assets", "Liabilities", "Capital"].includes(metricType)) {
       return barUnit ?? undefined;
     }
     if (["EPS"].includes(metricType)) {
