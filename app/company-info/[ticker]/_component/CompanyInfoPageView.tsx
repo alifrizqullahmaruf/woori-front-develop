@@ -80,22 +80,24 @@ export default function CompanyInfoPageView() {
 
     const percentChange = latest?.percent_change ?? 0;
     const netChange = latest?.net_change ?? 0;
+
+    // Get currency first before formatting
+    const detectedCurrency = latest?.currency || "KRW";
+    const currencySymbol = getCurrencySymbol(detectedCurrency);
+
     const price =
       latest?.closing_price != null
-        ? formatCurrency(latest.closing_price)
+        ? formatCurrency(latest.closing_price, detectedCurrency)
         : "N/A";
     const change =
       latest && latest.percent_change != null && latest.net_change != null
-        ? `${percentChange >= 0 ? "+" : ""}${formatPercentage(percentChange / 100)} (${formatCurrency(Math.abs(netChange))})`
+        ? `${percentChange >= 0 ? "+" : ""}${formatPercentage(percentChange / 100)} (${formatCurrency(Math.abs(netChange), detectedCurrency)})`
         : "N/A";
     const color = percentChange >= 0 ? "text-red-500" : "text-blue-500";
     const name =
       companyData?.items?.[0]?.company_name_kr ||
       companyData?.items?.[0]?.company_name ||
       " ";
-    const currency = latest?.currency
-      ? getCurrencySymbol(latest.currency)
-      : "원";
 
     return {
       latestPrice: latest,
@@ -103,7 +105,7 @@ export default function CompanyInfoPageView() {
       formattedChange: change,
       priceColor: color,
       companyName: name,
-      currencySymbol: currency,
+      currencySymbol: currencySymbol,
     };
   }, [priceData, companyData]);
 

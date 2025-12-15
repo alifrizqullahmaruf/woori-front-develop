@@ -20,6 +20,8 @@ export interface CommonChartProps {
   height?: number;
   valueDecimals?: number;
   valueSuffix?: string;
+  valuePrefix?: string;
+  unitLabel?: string;
 }
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ChartDataLabels);
@@ -34,6 +36,8 @@ export default function BarChart({
   height,
   valueDecimals = 2,
   valueSuffix,
+  valuePrefix,
+  unitLabel,
 }: CommonChartProps) {
   const chartRef = useRef<ChartJS<"bar"> | null>(null);
 
@@ -93,9 +97,9 @@ export default function BarChart({
               const formattedValue = Number.isFinite(value)
                 ? value.toFixed(valueDecimals)
                 : "0";
-              return valueSuffix
-                ? `${formattedValue}${valueSuffix}`
-                : formattedValue;
+              const prefix = valuePrefix || "";
+              const suffix = valueSuffix || "";
+              return `${prefix}${formattedValue}${suffix}`;
             },
           },
         },
@@ -128,9 +132,9 @@ export default function BarChart({
                 const formattedValue = Number.isFinite(value)
                   ? value.toFixed(valueDecimals)
                   : "0";
-                return valueSuffix
-                  ? `${formattedValue}${valueSuffix}`
-                  : formattedValue;
+                const prefix = valuePrefix || "";
+                const suffix = valueSuffix || "";
+                return `${prefix}${formattedValue}${suffix}`;
               },
               color: "#3F4150",
               font: { size: 12, family: "Lato Numbers", weight: "bold" },
@@ -164,17 +168,25 @@ export default function BarChart({
       displayValues,
       valueDecimals,
       valueSuffix,
+      valuePrefix,
     ],
   );
 
   return (
-    <Bar
-      ref={chartRef}
-      className="pt-4"
-      data={chartData}
-      options={chartOptions}
-      {...(width && { width })}
-      {...(height && { height })}
-    />
+    <div className="relative">
+      {unitLabel && (
+        <div className="absolute right-0 top-0 text-xs text-gray-500 bg-blue-50 px-2 py-1 rounded">
+          {unitLabel}
+        </div>
+      )}
+      <Bar
+        ref={chartRef}
+        className="pt-4"
+        data={chartData}
+        options={chartOptions}
+        {...(width && { width })}
+        {...(height && { height })}
+      />
+    </div>
   );
 }

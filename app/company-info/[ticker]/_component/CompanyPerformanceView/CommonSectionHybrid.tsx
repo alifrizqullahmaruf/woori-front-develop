@@ -35,6 +35,18 @@ export default function CommonSectionHybrid({
 
   const { data: fundamentalsData, isLoading, error } = useFundamentals(ticker);
 
+  // Extract currency from fundamentalsData
+  const currency = useMemo(() => {
+    if (!fundamentalsData?.items?.length) return "KRW";
+    // Get currency from the first item that has a valid currency (not % or null)
+    for (const item of fundamentalsData.items) {
+      if (item.currency && item.currency !== "%" && item.currency !== "null") {
+        return item.currency;
+      }
+    }
+    return "KRW";
+  }, [fundamentalsData]);
+
   const [isComparePeriod, toggleComparePeriod] = useHandlePeriodCompare();
   const [activeItem, changeActiveItem] = useHandleTab(tabList);
   const [periodMode, setPeriodMode] = useState<"Quarterly" | "Annual">(
@@ -139,40 +151,75 @@ export default function CommonSectionHybrid({
   );
 
   const barUnit = useMemo(() => {
-    if (!scaleForBar) return undefined as undefined | "조" | "억" | "만";
+    if (!scaleForBar) return undefined as undefined | "조" | "억" | "만" | "T" | "B" | "M";
     const maxAbs = Math.max(
       0,
       ...chartData.values.map((v) => (Number.isFinite(v) ? Math.abs(v) : 0)),
     );
-    if (maxAbs >= 1_000_000) return "조";
-    if (maxAbs >= 100) return "억";
-    return "만";
-  }, [scaleForBar, chartData.values]);
+
+    if (currency === "USD") {
+      // USD: use T, B, M scaling
+      if (maxAbs >= 1_000_000_000_000) return "T";
+      if (maxAbs >= 1_000_000_000) return "B";
+      return "M";
+    } else {
+      // KRW: use 조, 억, 만 scaling
+      if (maxAbs >= 1_000_000) return "조";
+      if (maxAbs >= 100) return "억";
+      return "만";
+    }
+  }, [scaleForBar, chartData.values, currency]);
 
   const barValuesScaled = useMemo(() => {
     if (!scaleForBar) return chartData.values;
-    const multiplier =
-      barUnit === "조" ? 1 / 1_000_000 : barUnit === "억" ? 1 / 100 : 100;
+
+    let multiplier: number;
+    if (currency === "USD") {
+      // USD scaling
+      multiplier =
+        barUnit === "T" ? 1 / 1_000_000_000_000 :
+        barUnit === "B" ? 1 / 1_000_000_000 :
+        1 / 1_000_000; // M
+    } else {
+      // KRW scaling
+      multiplier =
+        barUnit === "조" ? 1 / 1_000_000 :
+        barUnit === "억" ? 1 / 100 :
+        1 / 10_000; // 만
+    }
+
     return chartData.values.map((v) =>
       Number.isFinite(v) ? Number((v * multiplier).toFixed(1)) : 0,
     );
-  }, [scaleForBar, chartData.values, barUnit]);
+  }, [scaleForBar, chartData.values, barUnit, currency]);
 
-  const barValueSuffix = useMemo(() => {
+  const barValueFormatting = useMemo(() => {
     if (["Revenue", "Operating income", "Net income"].includes(metricType)) {
-      return barUnit ?? undefined;
+      const unit = barUnit ?? "";
+      const unitLabel = currency === "USD"
+        ? `Unit: ${unit}`
+        : `단위: ${unit}`;
+      return {
+        prefix: currency === "USD" ? "$" : "",
+        suffix: currency === "USD" ? unit : unit,
+        unitLabel,
+      };
     }
     if (["EPS"].includes(metricType)) {
-      return "원";
+      return {
+        prefix: currency === "USD" ? "$" : "",
+        suffix: currency === "USD" ? "" : "원",
+        unitLabel: currency === "USD" ? "Unit: USD" : "단위: 원",
+      };
     }
     if (["ROE", "ROA"].includes(metricType)) {
-      return "%";
+      return { prefix: "", suffix: "%", unitLabel: "단위: %" };
     }
     if (["PER Quarterly", "PBR"].includes(metricType)) {
-      return "";
+      return { prefix: "", suffix: "", unitLabel: "" };
     }
-    return undefined;
-  }, [metricType, barUnit]);
+    return { prefix: "", suffix: "", unitLabel: "" };
+  }, [metricType, barUnit, currency]);
 
   const barValueDecimals = useMemo(() => {
     if (scaleForBar) return 1;
@@ -241,7 +288,9 @@ export default function CommonSectionHybrid({
               isUpdateChart={isUpdateChart}
               height={212}
               valueDecimals={barValueDecimals}
-              valueSuffix={barValueSuffix}
+              valuePrefix={barValueFormatting.prefix}
+              valueSuffix={barValueFormatting.suffix}
+              unitLabel={barValueFormatting.unitLabel}
             />
           )}
         </DataStateHandler>

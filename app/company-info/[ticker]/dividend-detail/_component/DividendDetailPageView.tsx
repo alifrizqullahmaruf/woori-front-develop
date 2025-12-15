@@ -65,7 +65,10 @@ export default function DividendDetailPageView() {
           })
         : "-";
 
-      const amountStr = `${item.dividend_amount}원`;
+      const currencySymbol = item.currency === "USD" ? "$" : "원";
+      const amountStr = item.currency === "USD"
+        ? `${currencySymbol}${item.dividend_amount.toFixed(2)}`
+        : `${item.dividend_amount}${currencySymbol}`;
 
       grouped[year].push({
         ex: exFormatted,

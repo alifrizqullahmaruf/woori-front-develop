@@ -60,7 +60,9 @@ export default function CompanyDividendView() {
       {
         category: "1주당 배당금",
         value: latestEvent?.dividend_amount
-          ? `${latestEvent.dividend_amount}원`
+          ? latestEvent.currency === "USD"
+            ? `$${latestEvent.dividend_amount.toFixed(2)}`
+            : `${latestEvent.dividend_amount}원`
           : "-",
       },
       {

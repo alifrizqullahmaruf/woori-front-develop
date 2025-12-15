@@ -64,22 +64,24 @@ export default function CompanyOverviewView() {
   }, [priceData]);
 
   // Map the latest fundamentals by metric_type, and get the latest settlement info
-  const { fundamentalsMap, recentSettlement, fiscalMonth } = useMemo(() => {
+  const { fundamentalsMap, recentSettlement, fiscalMonth, currency } = useMemo(() => {
     const result: Record<string, number> = {};
     if (!fundamentalsData?.items?.length) {
       return {
         fundamentalsMap: result,
         recentSettlement: "-",
         fiscalMonth: "-",
+        currency: "KRW",
       };
     }
 
     // For each metric_type, keep the item with the most recent report_date
     const latestByType = new Map<
       string,
-      { value: number; report_date: string }
+      { value: number; report_date: string; currency: string }
     >();
     let latestReport: string | null = null;
+    let detectedCurrency = "KRW";
 
     for (const item of fundamentalsData.items) {
       const prev = latestByType.get(item.metric_type);
@@ -87,7 +89,12 @@ export default function CompanyOverviewView() {
         latestByType.set(item.metric_type, {
           value: item.metric_value,
           report_date: item.report_date,
+          currency: item.currency,
         });
+        // Get currency from the first item (should be consistent across all items)
+        if (item.currency && item.currency !== "%" && item.currency !== "null") {
+          detectedCurrency = item.currency;
+        }
       }
       if (
         !latestReport ||
@@ -112,7 +119,7 @@ export default function CompanyOverviewView() {
       ? `${new Date(latestReport).getMonth() + 1}월`
       : "-";
 
-    return { fundamentalsMap: result, recentSettlement, fiscalMonth };
+    return { fundamentalsMap: result, recentSettlement, fiscalMonth, currency: detectedCurrency };
   }, [fundamentalsData]);
 
   // Get the latest outstanding shares (sorted by record_date desc)
@@ -139,7 +146,7 @@ export default function CompanyOverviewView() {
         category: "시가총액",
         value:
           latestDailyPrice?.market_cap != null
-            ? formatCurrency(latestDailyPrice.market_cap)
+            ? formatCurrency(latestDailyPrice.market_cap, currency)
             : "-",
       },
       {
@@ -151,7 +158,7 @@ export default function CompanyOverviewView() {
         value: company?.exchange_kr || company?.exchange || "-",
       },
     ],
-    [company, ticker, latestDailyPrice],
+    [company, ticker, latestDailyPrice, currency],
   );
 
   const tableContents2: DummyTableContents[] = useMemo(
@@ -186,8 +193,12 @@ export default function CompanyOverviewView() {
         category: "자본금",
         value:
           fundamentalsMap?.Capital !== undefined
-            ? (formatWonRaw(fromFinnhubMillionToWon(fundamentalsMap.Capital)) ??
-              "-")
+            ? formatCurrency(
+                currency === "KRW"
+                  ? fromFinnhubMillionToWon(fundamentalsMap.Capital) || 0
+                  : fundamentalsMap.Capital,
+                currency
+              )
             : "-",
       },
       {
@@ -211,6 +222,7 @@ export default function CompanyOverviewView() {
       latestOutstandingShares,
       recentSettlement,
       fiscalMonth,
+      currency,
     ],
   );
 
